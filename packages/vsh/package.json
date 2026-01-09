@@ -1,0 +1,19 @@
+{
+	"dependencies": {
+		"@vsh/compiler": "workspace:*",
+		"effect": "^3.19.14"
+	},
+	"devDependencies": {
+		"@tsconfig/bun": "catalog:",
+		"@types/bun": "catalog:"
+	},
+	"exports": {
+		"./*": "./src/*.ts"
+	},
+	"name": "@vsh/vsh",
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"private": true,
+	"type": "module"
+}
