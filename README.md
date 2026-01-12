@@ -16,10 +16,14 @@ bun add vsh
 
 ```typescript
 import { Shell } from 'vsh';
+import { MemoryFS } from 'vsh/fs';
 
-const { $ } = new Shell();
+const fs = new MemoryFS();
+fs.setFile('hello.txt', 'hello world');
 
-const content = await $`tail -n 10 logs.txt`.text();
+const { $ } = new Shell(fs);
+
+const content = await $`cat hello.txt`.text();
 console.log(content);
 ```
 
