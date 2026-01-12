@@ -1,11 +1,8 @@
 import type { FS } from '../../fs/fs';
-import type { FileRecord } from '../../record';
-import type { Sink } from '../types';
+import type { Effect } from '../types';
 
-export function rm(fs: FS): Sink<FileRecord, void> {
-	return async (input) => {
-		for await (const record of input) {
-			await fs.delete(record.path);
-		}
+export function rm(fs: FS): Effect<{ path: string; recursive: boolean }> {
+	return async ({ path }) => {
+		await fs.deleteFile(path);
 	};
 }

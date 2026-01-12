@@ -30,7 +30,10 @@ test('rm with multiple files', () => {
 		name: 'rm',
 	});
 	expect(result).toEqual({
-		args: { paths: ['file1.txt', 'file2.txt', 'file3.txt'], recursive: false },
+		args: {
+			paths: ['file1.txt', 'file2.txt', 'file3.txt'],
+			recursive: false,
+		},
 		cmd: 'rm',
 	});
 });

@@ -41,5 +41,7 @@ function format(record: Record): string {
 			return JSON.stringify(record.value);
 		case 'file':
 			return record.path;
+		default:
+			throw new Error('Unknown record kind');
 	}
 }

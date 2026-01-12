@@ -1,1 +1,1 @@
-export type Stream<T> = AsyncIterable<T>
+export type Stream<T> = AsyncIterable<T>;

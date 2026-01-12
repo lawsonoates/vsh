@@ -1,11 +1,17 @@
-export type FileRecord = { kind: 'file'; path: string };
-export type LineRecord = {
+export interface FileRecord {
+	kind: 'file';
+	path: string;
+}
+export interface LineRecord {
 	kind: 'line';
 	text: string;
 	file?: string;
 	lineNum?: number;
-};
-export type JsonRecord = { kind: 'json'; value: unknown };
+}
+export interface JsonRecord {
+	kind: 'json';
+	value: unknown;
+}
 
 /**
  * Record is the unit of data flowing through pipelines.

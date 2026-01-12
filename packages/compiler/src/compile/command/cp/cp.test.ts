@@ -3,7 +3,10 @@ import { expect, test } from 'bun:test';
 import { compileCp } from './cp';
 
 test('cp with source and destination', () => {
-	const result = compileCp({ args: ['file.txt', 'file_copy.txt'], name: 'cp' });
+	const result = compileCp({
+		args: ['file.txt', 'file_copy.txt'],
+		name: 'cp',
+	});
 	expect(result).toEqual({
 		args: { dest: 'file_copy.txt', recursive: false, srcs: ['file.txt'] },
 		cmd: 'cp',
@@ -16,7 +19,11 @@ test('cp with paths', () => {
 		name: 'cp',
 	});
 	expect(result).toEqual({
-		args: { dest: '/tmp/', recursive: false, srcs: ['/home/user/file.txt'] },
+		args: {
+			dest: '/tmp/',
+			recursive: false,
+			srcs: ['/home/user/file.txt'],
+		},
 		cmd: 'cp',
 	});
 });

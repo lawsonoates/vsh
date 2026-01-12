@@ -1,11 +1,10 @@
 import type { PipelineIR } from '@vsh/compiler/ir';
-import * as R from 'remeda';
-
+import { map, pipe } from 'remeda';
 import type { FS } from '../fs/fs';
 import { cat } from '../operator/cat/cat';
 import { cp } from '../operator/cp/cp';
 import { ls } from '../operator/ls/ls';
-import { pwd } from '../operator/pwd/pwd';
+import { mkdir } from '../operator/mkdir/mkdir';
 import { rm } from '../operator/rm/rm';
 import { tail } from '../operator/tail/tail';
 import type { Record } from '../record';
@@ -23,71 +22,95 @@ export type ExecuteResult =
 export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
 	const step = ir.steps[0];
 	if (!step) {
-		return { kind: 'stream', stream: (async function* () {})() };
+		return {
+			kind: 'stream',
+			stream: (async function* () {
+				// Empty stream - no steps to execute
+			})(),
+		};
 	}
-
-	// Get source file(s) from IR
-	const sourceGlob = ir.source.kind === 'fs' ? ir.source.glob : '';
 
 	switch (step.cmd) {
 		case 'cat':
 			return {
 				kind: 'stream',
-				stream: R.pipe(files(fs, ...step.args.files)(), cat(fs)),
+				stream: pipe(files(...step.args.files), cat(fs)),
 			};
 		case 'cp':
 			return {
 				kind: 'sink',
-				promise: R.pipe(
-					(async function* () {
-						for (const src of step.args.srcs) {
-							yield* files(fs, src)();
-						}
-					})(),
-					cp(fs, step.args.dest),
-				),
+				promise: Promise.all(
+					map(step.args.srcs, (src) =>
+						cp(fs)({
+							src,
+							dest: step.args.dest,
+							recursive: step.args.recursive,
+						})
+					)
+				).then(),
 			};
 		case 'ls':
 			return {
 				kind: 'stream',
-				stream: R.pipe(
-					(async function* () {
-						for (const path of step.args.paths) {
-							yield* ls(fs, path)();
-						}
-					})(),
-				),
+				// stream: (async function* () {
+				// 	for (const path of step.args.paths) {
+				// 		yield* ls(fs, path);
+				// 	}
+				// })(),
+				// stream: Promise.all(
+				// 	map(step.args.paths, (path) => ls(fs, path))
+				// ).then(),
+				stream: (async function* () {
+					const results = await Promise.all(
+						map(step.args.paths, (path) => ls(fs, path))
+					).then();
+
+					for (const file of results) {
+						yield* file;
+					}
+				})(),
 			};
-		case 'pwd':
-			return { kind: 'stream', stream: R.pipe(pwd(fs)()) };
 		case 'rm':
 			return {
 				kind: 'sink',
-				promise: R.pipe(
-					(async function* () {
-						for (const path of step.args.paths) {
-							yield* files(fs, path)();
-						}
-					})(),
-					rm(fs),
-				),
+				promise: Promise.all(
+					map(step.args.paths, (path) =>
+						rm(fs)({ path, recursive: step.args.recursive })
+					)
+				).then(),
 			};
 		case 'tail':
 			return {
 				kind: 'stream',
-				stream: R.pipe(
-					(async function* () {
-						if (step.args.files.length === 0) {
-							yield* files(fs, sourceGlob)();
-						} else {
-							for (const file of step.args.files) {
-								yield* files(fs, file)();
-							}
-						}
-					})(),
-					cat(fs),
-					tail(step.args.n),
-				),
+				stream: (async function* () {
+					const results = await Promise.all(
+						map(step.args.files, (file) =>
+							pipe(files(file), cat(fs), tail(step.args.n))
+						)
+					);
+					for (const lines of results) {
+						yield* lines;
+					}
+				})(),
+
+				// stream: Promise.all(
+				// 	map(step.args.files, (file) =>
+				// 		pipe(files(file), cat(fs), tail(step.args.n))
+				// 	)
+				// ),
 			};
+		case 'mkdir':
+			return {
+				kind: 'sink',
+				promise: Promise.all(
+					map(step.args.paths, (path) =>
+						mkdir(fs)({ path, recursive: step.args.recursive })
+					)
+				).then(),
+			};
+		default:
+			throw new Error(
+				`Unknown command: ${String((step as { cmd: string }).cmd)}`
+			);
 	}
 }

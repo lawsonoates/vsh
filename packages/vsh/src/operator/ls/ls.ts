@@ -1,11 +1,9 @@
 import type { FS } from '../../fs/fs';
-import type { Record } from '../../record';
-import type { Producer } from '../types';
+import type { FileRecord } from '../../record';
+import type { Stream } from '../../stream';
 
-export function ls(fs: FS, path: string): Producer<Record> {
-	return async function* () {
-		for await (const p of fs.list(path)) {
-			yield { kind: 'file', path: p };
-		}
-	};
+export async function* ls(fs: FS, path: string): Stream<FileRecord> {
+	for await (const p of fs.readdir(path)) {
+		yield { kind: 'file', path: p };
+	}
 }

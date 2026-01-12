@@ -11,11 +11,8 @@ test('ls lists files matching the glob pattern', async () => {
 	fs.setFile('/dir/file3.txt', 'content3');
 
 	const files: string[] = [];
-	const producer = ls(fs, '/*.txt');
-	for await (const record of producer()) {
-		if (record.kind === 'file') {
-			files.push(record.path);
-		}
+	for await (const record of ls(fs, '/*.txt')) {
+		files.push(record.path);
 	}
 
 	expect(files).toEqual(['/file1.txt', '/file2.txt']);

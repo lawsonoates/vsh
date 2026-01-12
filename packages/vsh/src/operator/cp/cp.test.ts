@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 
 import { MemoryFS } from '../../fs/memory';
-import type { Record } from '../../record';
 import { cp } from './cp';
 
 test('cp copies file from source to destination', async () => {
@@ -12,12 +11,8 @@ test('cp copies file from source to destination', async () => {
 
 	fs.setFile(sourcePath, sourceContent);
 
-	async function* createRecordStream(): AsyncIterable<Record> {
-		yield { kind: 'file', path: sourcePath };
-	}
-
-	const sink = cp(fs, destPath);
-	await sink(createRecordStream());
+	const effect = cp(fs);
+	await effect({ src: sourcePath, dest: destPath, recursive: false });
 
 	const destContent = await fs.readFile(destPath);
 	expect(new TextDecoder().decode(destContent)).toBe(sourceContent);

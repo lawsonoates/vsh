@@ -1,13 +1,13 @@
 import { openrouter } from '@openrouter/ai-sdk-provider';
-import { Shell } from '@vsh/vsh/client';
-import { MemoryFS } from '@vsh/vsh/memory';
+import { Shell } from '@vsh/vsh';
+import { MemoryFS } from '@vsh/vsh/fs';
 import { generateText, stepCountIs, tool } from 'ai';
 import { z } from 'zod';
 
 const fs = new MemoryFS();
 fs.setFile(
 	'/lines.txt',
-	Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`).join('\n'),
+	Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`).join('\n')
 );
 
 const { $ } = new Shell(fs);
@@ -36,8 +36,7 @@ const bashTool = tool({
 
 const { text } = await generateText({
 	model: openrouter('anthropic/claude-haiku-4.5'),
-	prompt:
-		'Read the contents of the file /lines.txt and return the last 2 lines.',
+	prompt: 'Read the contents of the file /lines.txt and return the last 2 lines.',
 	stopWhen: stepCountIs(2),
 	tools: { bash: bashTool },
 });

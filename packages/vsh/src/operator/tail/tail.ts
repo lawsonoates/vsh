@@ -5,7 +5,9 @@ export function tail<T>(n: number): Transducer<T, T> {
 		const buf: T[] = [];
 		for await (const x of input) {
 			buf.push(x);
-			if (buf.length > n) buf.shift();
+			if (buf.length > n) {
+				buf.shift();
+			}
 		}
 		yield* buf;
 	};

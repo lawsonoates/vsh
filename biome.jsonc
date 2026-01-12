@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core"],
+  "formatter": {
+    "indentStyle": "tab",
+    "indentWidth": 4
+  },
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "useAwait": "off"
+      },
+      "style": {
+        "noNamespace": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  }
+}

@@ -1,5 +1,7 @@
 import type { ShellAST } from './ast';
 
+const WHITESPACE_REGEX = /\s+/;
+
 export function parse(input: string): ShellAST {
 	const commands = input
 		.split('|')
@@ -25,5 +27,5 @@ export function parse(input: string): ShellAST {
 
 function tokenize(s: string): string[] {
 	// minimal: split on whitespace, no quotes yet
-	return s.split(/\s+/).filter(Boolean);
+	return s.split(WHITESPACE_REGEX).filter(Boolean);
 }

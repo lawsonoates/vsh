@@ -1,8 +1,8 @@
-export type ShellCommand = {
+export interface ShellCommand {
 	name: string;
 	args: string[];
-};
+}
 
-export type ShellAST = {
+export interface ShellAST {
 	commands: ShellCommand[];
-};
+}

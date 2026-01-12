@@ -49,7 +49,10 @@ test('tail with file argument', () => {
 });
 
 test('tail with -n and file argument', () => {
-	const result = compileTail({ args: ['-n', '20', 'file.txt'], name: 'tail' });
+	const result = compileTail({
+		args: ['-n', '20', 'file.txt'],
+		name: 'tail',
+	});
 	expect(result).toEqual({
 		args: { files: ['file.txt'], n: 20 },
 		cmd: 'tail',

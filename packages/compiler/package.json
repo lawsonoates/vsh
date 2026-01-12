@@ -1,19 +1,17 @@
 {
-	"dependencies": {},
-	"devDependencies": {
-		"@tsconfig/bun": "catalog:",
-		"@types/bun": "catalog:"
-	},
-	"exports": {
-		"./ast": "./src/ast.ts",
-		"./compile": "./src/compile/compile.ts",
-		"./ir": "./src/ir.ts",
-		"./parser": "./src/parser.ts"
-	},
-	"name": "@vsh/compiler",
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"private": true,
-	"type": "module"
+  "devDependencies": {
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:"
+  },
+  "exports": {
+    "./ast": "./src/ast.ts",
+    "./compile": "./src/compile/compile.ts",
+    "./ir": "./src/ir.ts",
+    "./parser": "./src/parser.ts"
+  },
+  "name": "@vsh/compiler",
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "type": "module"
 }

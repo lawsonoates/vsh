@@ -1,19 +1,19 @@
 {
-	"dependencies": {
-		"@vsh/compiler": "workspace:*",
-		"remeda": "^2.33.1"
-	},
-	"devDependencies": {
-		"@tsconfig/bun": "catalog:",
-		"@types/bun": "catalog:"
-	},
-	"exports": {
-		"./*": "./src/index.ts"
-	},
-	"name": "@vsh/vsh",
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"private": true,
-	"type": "module"
+  "dependencies": {
+    "@vsh/compiler": "workspace:*",
+    "remeda": "^2.33.1"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:"
+  },
+  "exports": {
+    ".": "./src/shell/shell.ts",
+    "./fs": "./src/fs/memory.ts"
+  },
+  "name": "vsh",
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "type": "module"
 }

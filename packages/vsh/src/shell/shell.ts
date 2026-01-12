@@ -17,7 +17,7 @@ async function collectRecords(result: ExecuteResult): Promise<Record[]> {
 }
 
 export class Shell {
-	private fs: FS;
+	private readonly fs: FS;
 
 	constructor(fs: FS) {
 		this.fs = fs;
@@ -43,16 +43,20 @@ export class Shell {
 		return {
 			async json(): Promise<unknown[]> {
 				const records = await collectRecords(execute(ir(), fs));
-				return records.filter((r) => r.kind === 'json').map((r) => r.value);
+				return records
+					.filter((r) => r.kind === 'json')
+					.map((r) => r.value);
 			},
 
 			async lines(): Promise<string[]> {
 				const records = await collectRecords(execute(ir(), fs));
-				return records.filter((r) => r.kind === 'line').map((r) => r.text);
+				return records
+					.filter((r) => r.kind === 'line')
+					.map((r) => r.text);
 			},
 
 			async raw(): Promise<Record[]> {
-				return collectRecords(execute(ir(), fs));
+				return await collectRecords(execute(ir(), fs));
 			},
 
 			async stdout(): Promise<void> {
@@ -72,9 +76,15 @@ export class Shell {
 				const records = await collectRecords(execute(ir(), fs));
 				return records
 					.map((r) => {
-						if (r.kind === 'line') return r.text;
-						if (r.kind === 'file') return r.path;
-						if (r.kind === 'json') return JSON.stringify(r.value);
+						if (r.kind === 'line') {
+							return r.text;
+						}
+						if (r.kind === 'file') {
+							return r.path;
+						}
+						if (r.kind === 'json') {
+							return JSON.stringify(r.value);
+						}
 						return '';
 					})
 					.join('\n');

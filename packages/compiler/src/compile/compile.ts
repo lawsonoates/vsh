@@ -21,7 +21,7 @@ function compileSource(cmd: { name: string; args: string[] }): SourceIR {
 		throw new Error(`Missing source argument for ${cmd.name}`);
 	}
 
-	return { glob: cmd.args[cmd.args.length - 1] as string, kind: 'fs' };
+	return { glob: cmd.args.at(-1) as string, kind: 'fs' };
 }
 
 function compileStep(cmd: { name: string; args: string[] }): StepIR {
