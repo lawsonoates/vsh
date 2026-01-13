@@ -1,15 +1,15 @@
 # vsh
 
-vsh (virtual shell) is a simulated fish shell (subset) environment for executing filesystem-related commands.
+vsh (virtual shell) is a simulated [fish shell](https://github.com/fish-shell/fish-shell) (subset) environment for executing filesystem-related commands.
 
 vsh is inspired by Bun's `$` shell api and provides a pluggable filesystem interface allowing custom storage.
 
 vsh is designed to be used by agents needing a filesystem without having to spin up a sandbox.
 
-- why fish? it's simple.
-- why a subset of fish? vsh is only for simulating a filesystem, only a subset is really needed.
+- Why fish? it's simple.
+- Why a subset of fish? vsh is only for simulating a filesystem, only a subset is really needed.
 
-The subset includes the commands listed in [Supported Commands](#supported-commands) section and has a simplified grammar (no variables, no functions, no heredocs). More details in the [Grammar](#grammar) section and the [Lexer Specification](packages/compiler/src/lexer/lexer-spec.md).
+The subset includes the commands listed in [Supported Commands](#supported-commands) section and has a simplified grammar (no variables, no functions, no heredocs). More details available in the [Grammar](#grammar) section and the [Lexer Specification](packages/compiler/src/lexer/lexer-spec.md).
 
 ## Installation
 
