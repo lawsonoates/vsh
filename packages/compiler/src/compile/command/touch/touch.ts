@@ -1,15 +1,33 @@
-import type { ShellCommand } from '../../../ast';
-import type { StepIR } from '../../../ir';
+/**
+ * touch command handler for the AST-based compiler.
+ */
 
-export function compileTouch(cmd: ShellCommand): StepIR {
-	const args = cmd.args.filter((a) => !a.startsWith('-'));
+import {
+	type ExpandedWord,
+	expandedWordToString,
+	type SimpleCommandIR,
+	type StepIR,
+} from '../../../ir';
 
-	if (args.length === 0) {
+/**
+ * Compile a touch command from SimpleCommandIR to StepIR.
+ */
+export function compileTouch(cmd: SimpleCommandIR): StepIR {
+	const files: ExpandedWord[] = [];
+
+	for (const arg of cmd.args) {
+		const argStr = expandedWordToString(arg);
+		if (!argStr.startsWith('-')) {
+			files.push(arg);
+		}
+	}
+
+	if (files.length === 0) {
 		throw new Error('touch requires at least one file');
 	}
 
 	return {
-		args: { files: args },
 		cmd: 'touch',
+		args: { files },
 	} as const;
 }

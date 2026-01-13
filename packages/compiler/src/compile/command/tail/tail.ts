@@ -1,41 +1,53 @@
-import type { ShellCommand } from '../../../ast';
-import type { StepIR } from '../../../ir';
+/**
+ * tail command handler for the AST-based compiler.
+ */
+
+import {
+	type ExpandedWord,
+	expandedWordToString,
+	type SimpleCommandIR,
+	type StepIR,
+} from '../../../ir';
 
 const NEGATIVE_NUMBER_REGEX = /^-\d+$/;
 
-export function compileTail(cmd: ShellCommand): StepIR {
+/**
+ * Compile a tail command from SimpleCommandIR to StepIR.
+ */
+export function compileTail(cmd: SimpleCommandIR): StepIR {
 	let n = 10; // default
-	const files: string[] = [];
+	const files: ExpandedWord[] = [];
 
 	let skipNext = false;
-	for (const [i, arg] of cmd.args.entries()) {
+	for (let i = 0; i < cmd.args.length; i++) {
 		if (skipNext) {
 			skipNext = false;
 			continue;
 		}
 
-		if (!arg) {
-			continue;
-		}
+		const arg = cmd.args[i];
+		if (!arg) continue;
+
+		const argStr = expandedWordToString(arg);
 
 		// Handle -n N format (e.g., -n 10)
-		if (arg === '-n') {
+		if (argStr === '-n') {
 			const numArg = cmd.args[i + 1];
 			if (!numArg) {
 				throw new Error('tail -n requires a number');
 			}
-			n = Number(numArg);
+			n = Number(expandedWordToString(numArg));
 			if (!Number.isFinite(n)) {
 				throw new Error('Invalid tail count');
 			}
 			skipNext = true;
 		}
 		// Handle -N format (e.g., -10)
-		else if (arg.startsWith('-') && NEGATIVE_NUMBER_REGEX.test(arg)) {
-			n = Number(arg.slice(1));
+		else if (argStr.startsWith('-') && NEGATIVE_NUMBER_REGEX.test(argStr)) {
+			n = Number(argStr.slice(1));
 		}
 		// Everything else is a file
-		else if (arg.startsWith('-')) {
+		else if (argStr.startsWith('-')) {
 			throw new Error('Unknown tail option');
 		} else {
 			files.push(arg);
@@ -43,7 +55,7 @@ export function compileTail(cmd: ShellCommand): StepIR {
 	}
 
 	return {
-		args: { files, n },
 		cmd: 'tail',
+		args: { files, n },
 	} as const;
 }

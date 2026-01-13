@@ -1,16 +1,36 @@
-import type { ShellCommand } from '../../../ast';
-import type { StepIR } from '../../../ir';
+/**
+ * mkdir command handler for the AST-based compiler.
+ */
 
-export function compileMkdir(cmd: ShellCommand): StepIR {
-	const recursive = cmd.args.includes('-p');
-	const paths = cmd.args.filter((a) => a !== '-p');
+import {
+	type ExpandedWord,
+	expandedWordToString,
+	type SimpleCommandIR,
+	type StepIR,
+} from '../../../ir';
+
+/**
+ * Compile a mkdir command from SimpleCommandIR to StepIR.
+ */
+export function compileMkdir(cmd: SimpleCommandIR): StepIR {
+	let recursive = false;
+	const paths: ExpandedWord[] = [];
+
+	for (const arg of cmd.args) {
+		const argStr = expandedWordToString(arg);
+		if (argStr === '-p') {
+			recursive = true;
+		} else {
+			paths.push(arg);
+		}
+	}
 
 	if (paths.length === 0) {
 		throw new Error('mkdir requires at least one path');
 	}
 
 	return {
-		args: { paths, recursive },
 		cmd: 'mkdir',
+		args: { paths, recursive },
 	} as const;
 }

@@ -37,6 +37,10 @@ export class WordParser {
 	/**
 	 * Parse a single word from the current position.
 	 * Returns null if no word is present.
+	 *
+	 * A word consists of a single token from the scanner.
+	 * The token may contain multiple parts (literal, glob, command substitution)
+	 * which are parsed and combined into a single Word AST node.
 	 */
 	parseWord(): Word | null {
 		const token = this.parser.currentToken;
@@ -47,37 +51,23 @@ export class WordParser {
 		}
 
 		const startPos = token.span.start;
-		const parts = this.parseWordParts();
+
+		// Parse the single token into word parts
+		const part = this.parseWordPart(token);
+		const parts = part ? [part] : [];
 
 		if (parts.length === 0) {
 			return null;
 		}
 
-		const endPos = this.parser.previousTokenPosition;
+		// Advance past this token
+		this.parser.advance();
+
+		const endPos = token.span.end;
 		const span = new SourceSpan(startPos, endPos);
 		const quoted = token.isQuoted;
 
 		return new Word(span, parts, quoted);
-	}
-
-	/**
-	 * Parse word parts until we hit a word boundary.
-	 */
-	parseWordParts(): WordPart[] {
-		const parts: WordPart[] = [];
-
-		while (this.isWordToken(this.parser.currentToken)) {
-			const token = this.parser.currentToken;
-			const part = this.parseWordPart(token);
-
-			if (part) {
-				parts.push(part);
-			}
-
-			this.parser.advance();
-		}
-
-		return parts;
 	}
 
 	/**

@@ -1,5 +1,13 @@
-import type { ShellCommand } from '../../../ast';
-import type { StepIR } from '../../../ir';
+/**
+ * cat command handler for the AST-based compiler.
+ */
+
+import {
+	type ExpandedWord,
+	expandedWordToString,
+	type SimpleCommandIR,
+	type StepIR,
+} from '../../../ir';
 import type { Flag } from '../arg/flag';
 import { parseArgs } from '../arg/parse';
 
@@ -13,19 +21,33 @@ const flags: Record<string, Flag> = {
 	squeezeBlank: { short: 's', takesValue: false },
 };
 
-// TODO: No override behaviour implemented yet
+/**
+ * Compile a cat command from SimpleCommandIR to StepIR.
+ */
+export function compileCat(cmd: SimpleCommandIR): StepIR {
+	// Convert ExpandedWord[] to string[] for arg parsing
+	const argStrings = cmd.args.map(expandedWordToString);
 
-export function compileCat(cmd: ShellCommand): StepIR {
-	const parsed = parseArgs(cmd.args, flags);
+	const parsed = parseArgs(argStrings, flags);
 
-	const files = parsed.positional;
-	if (files.length === 0) {
+	// Filter to get only positional arguments (files)
+	const fileArgs: ExpandedWord[] = [];
+	for (const arg of cmd.args) {
+		const argStr = expandedWordToString(arg);
+		// Skip flags
+		if (!argStr.startsWith('-')) {
+			fileArgs.push(arg);
+		}
+	}
+
+	if (fileArgs.length === 0) {
 		throw new Error('cat requires at least one file');
 	}
 
 	return {
+		cmd: 'cat',
 		args: {
-			files,
+			files: fileArgs,
 			numberLines: parsed.flags.number === true,
 			numberNonBlank: parsed.flags.numberNonBlank === true,
 			showAll: parsed.flags.showAll === true,
@@ -34,6 +56,5 @@ export function compileCat(cmd: ShellCommand): StepIR {
 			showTabs: parsed.flags.showTabs === true,
 			squeezeBlank: parsed.flags.squeezeBlank === true,
 		},
-		cmd: 'cat',
 	} as const;
 }

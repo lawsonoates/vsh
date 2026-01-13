@@ -1,22 +1,42 @@
-import type { ShellCommand } from '../../../ast';
-import type { StepIR } from '../../../ir';
+/**
+ * cp command handler for the AST-based compiler.
+ */
 
-export function compileCp(cmd: ShellCommand): StepIR {
-	const recursive = cmd.args.includes('-r');
-	const args = cmd.args.filter((a) => a !== '-r' && a !== '-f' && a !== '-i');
+import {
+	type ExpandedWord,
+	expandedWordToString,
+	type SimpleCommandIR,
+	type StepIR,
+} from '../../../ir';
 
-	if (args.length < 2) {
+/**
+ * Compile a cp command from SimpleCommandIR to StepIR.
+ */
+export function compileCp(cmd: SimpleCommandIR): StepIR {
+	let recursive = false;
+	const filteredArgs: ExpandedWord[] = [];
+
+	for (const arg of cmd.args) {
+		const argStr = expandedWordToString(arg);
+		if (argStr === '-r') {
+			recursive = true;
+		} else if (argStr !== '-f' && argStr !== '-i') {
+			filteredArgs.push(arg);
+		}
+	}
+
+	if (filteredArgs.length < 2) {
 		throw new Error('cp requires source and destination');
 	}
 
-	const dest = args.pop();
+	const dest = filteredArgs.pop();
 	if (!dest) {
 		throw new Error('cp requires source and destination');
 	}
-	const srcs = args;
+	const srcs = filteredArgs;
 
 	return {
-		args: { dest, recursive, srcs },
 		cmd: 'cp',
+		args: { dest, recursive, srcs },
 	} as const;
 }

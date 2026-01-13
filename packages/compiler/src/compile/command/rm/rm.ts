@@ -1,18 +1,36 @@
-import type { ShellCommand } from '../../../ast';
-import type { StepIR } from '../../../ir';
+/**
+ * rm command handler for the AST-based compiler.
+ */
 
-export function compileRm(cmd: ShellCommand): StepIR {
-	const recursive = cmd.args.includes('-r');
-	const paths = cmd.args.filter(
-		(a) => a !== '-r' && a !== '-f' && a !== '-i'
-	);
+import {
+	type ExpandedWord,
+	expandedWordToString,
+	type SimpleCommandIR,
+	type StepIR,
+} from '../../../ir';
+
+/**
+ * Compile a rm command from SimpleCommandIR to StepIR.
+ */
+export function compileRm(cmd: SimpleCommandIR): StepIR {
+	let recursive = false;
+	const paths: ExpandedWord[] = [];
+
+	for (const arg of cmd.args) {
+		const argStr = expandedWordToString(arg);
+		if (argStr === '-r') {
+			recursive = true;
+		} else if (argStr !== '-f' && argStr !== '-i') {
+			paths.push(arg);
+		}
+	}
 
 	if (paths.length === 0) {
 		throw new Error('rm requires at least one path');
 	}
 
 	return {
-		args: { paths, recursive },
 		cmd: 'rm',
+		args: { paths, recursive },
 	} as const;
 }

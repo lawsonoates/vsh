@@ -32,13 +32,6 @@ export interface RedirectionIR {
 // Pipeline IR
 // ─────────────────────────────────────────────────────────
 
-export interface PipelineIR {
-	source: SourceIR;
-	steps: StepIR[];
-	/** Store the first command for reference (may include globs, command subs) */
-	firstCommand?: SimpleCommandIR;
-}
-
 export type SourceIR =
 	| {
 			kind: 'fs';
@@ -48,79 +41,10 @@ export type SourceIR =
 			kind: 'stdin';
 	  };
 
-export interface CatStep {
-	cmd: 'cat';
-	args: {
-		files: string[];
-		numberLines?: boolean;
-		numberNonBlank?: boolean;
-		squeezeBlank?: boolean;
-		showEnds?: boolean;
-		showTabs?: boolean;
-		showAll?: boolean;
-		showNonprinting?: boolean;
-	};
-}
-
-export interface CpStep {
-	cmd: 'cp';
-	args: { srcs: string[]; dest: string; recursive: boolean };
-}
-
-export interface HeadStep {
-	cmd: 'head';
-	args: { n: number; files: string[] };
-}
-
-export interface LsStep {
-	cmd: 'ls';
-	args: { paths: string[] };
-}
-
-export interface MkdirStep {
-	cmd: 'mkdir';
-	args: { paths: string[]; recursive: boolean };
-}
-
-export interface MvStep {
-	cmd: 'mv';
-	args: { srcs: string[]; dest: string };
-}
-
-export interface RmStep {
-	cmd: 'rm';
-	args: { paths: string[]; recursive: boolean };
-}
-
-export interface TailStep {
-	cmd: 'tail';
-	args: { n: number; files: string[] };
-}
-
-export interface TouchStep {
-	cmd: 'touch';
-	args: { files: string[] };
-}
-
-export type StepIR =
-	| CatStep
-	| CpStep
-	| HeadStep
-	| LsStep
-	| MkdirStep
-	| MvStep
-	| RmStep
-	| TailStep
-	| TouchStep;
-
-// ─────────────────────────────────────────────────────────
-// Enhanced Step Types (for new AST-based compiler)
-// ─────────────────────────────────────────────────────────
-
 /**
- * Enhanced cat step with ExpandedWord support.
+ * Cat step with ExpandedWord support.
  */
-export interface CatStepV2 {
+export interface CatStep {
 	cmd: 'cat';
 	args: {
 		files: ExpandedWord[];
@@ -135,89 +59,89 @@ export interface CatStepV2 {
 }
 
 /**
- * Enhanced cp step with ExpandedWord support.
+ * Cp step with ExpandedWord support.
  */
-export interface CpStepV2 {
+export interface CpStep {
 	cmd: 'cp';
 	args: { srcs: ExpandedWord[]; dest: ExpandedWord; recursive: boolean };
 }
 
 /**
- * Enhanced head step with ExpandedWord support.
+ * Head step with ExpandedWord support.
  */
-export interface HeadStepV2 {
+export interface HeadStep {
 	cmd: 'head';
 	args: { n: number; files: ExpandedWord[] };
 }
 
 /**
- * Enhanced ls step with ExpandedWord support.
+ * Ls step with ExpandedWord support.
  */
-export interface LsStepV2 {
+export interface LsStep {
 	cmd: 'ls';
 	args: { paths: ExpandedWord[] };
 }
 
 /**
- * Enhanced mkdir step with ExpandedWord support.
+ * Mkdir step with ExpandedWord support.
  */
-export interface MkdirStepV2 {
+export interface MkdirStep {
 	cmd: 'mkdir';
 	args: { paths: ExpandedWord[]; recursive: boolean };
 }
 
 /**
- * Enhanced mv step with ExpandedWord support.
+ * Mv step with ExpandedWord support.
  */
-export interface MvStepV2 {
+export interface MvStep {
 	cmd: 'mv';
 	args: { srcs: ExpandedWord[]; dest: ExpandedWord };
 }
 
 /**
- * Enhanced rm step with ExpandedWord support.
+ * Rm step with ExpandedWord support.
  */
-export interface RmStepV2 {
+export interface RmStep {
 	cmd: 'rm';
 	args: { paths: ExpandedWord[]; recursive: boolean };
 }
 
 /**
- * Enhanced tail step with ExpandedWord support.
+ * Tail step with ExpandedWord support.
  */
-export interface TailStepV2 {
+export interface TailStep {
 	cmd: 'tail';
 	args: { n: number; files: ExpandedWord[] };
 }
 
 /**
- * Enhanced touch step with ExpandedWord support.
+ * Touch step with ExpandedWord support.
  */
-export interface TouchStepV2 {
+export interface TouchStep {
 	cmd: 'touch';
 	args: { files: ExpandedWord[] };
 }
 
 /**
- * Union of all enhanced step types.
+ * Union of all step types.
  */
-export type StepIRV2 =
-	| CatStepV2
-	| CpStepV2
-	| HeadStepV2
-	| LsStepV2
-	| MkdirStepV2
-	| MvStepV2
-	| RmStepV2
-	| TailStepV2
-	| TouchStepV2;
+export type StepIR =
+	| CatStep
+	| CpStep
+	| HeadStep
+	| LsStep
+	| MkdirStep
+	| MvStep
+	| RmStep
+	| TailStep
+	| TouchStep;
 
 /**
- * Enhanced PipelineIR with V2 steps.
+ * PipelineIR with ExpandedWord support.
  */
-export interface PipelineIRV2 {
+export interface PipelineIR {
 	source: SourceIR;
-	steps: StepIRV2[];
+	steps: StepIR[];
 	firstCommand?: SimpleCommandIR;
 }
 
