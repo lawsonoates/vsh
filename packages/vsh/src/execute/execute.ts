@@ -1,8 +1,8 @@
-import type { PipelineIR } from '@vsh/compiler/ir';
 import {
 	expandedWordToString,
 	extractPathsFromExpandedWords,
-} from '@vsh/compiler/ir';
+	type PipelineIR,
+} from '@vsh/compiler';
 import { map, pipe } from 'remeda';
 import type { FS } from '../fs/fs';
 import { cat } from '../operator/cat/cat';

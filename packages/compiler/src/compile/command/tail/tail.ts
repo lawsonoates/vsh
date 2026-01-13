@@ -26,7 +26,9 @@ export function compileTail(cmd: SimpleCommandIR): StepIR {
 		}
 
 		const arg = cmd.args[i];
-		if (!arg) continue;
+		if (!arg) {
+			continue;
+		}
 
 		const argStr = expandedWordToString(arg);
 

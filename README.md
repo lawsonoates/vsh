@@ -1,3 +1,5 @@
+**Note**: agents were used extensively to develop vsh.
+
 # vsh
 
 vsh (virtual shell) is a simulated [fish shell](https://github.com/fish-shell/fish-shell) (subset) environment for executing filesystem-related commands.
@@ -32,12 +34,6 @@ const content = await $`cat hello.txt`.text();
 console.log(content);
 ```
 
-## Agents
-
-vsh is designed to be a tool used by agents to enable the benefits of a filesystem like progressive disclosure.
-
-TODO: prompt for agent tool
-
 ## Supported Commands
 - cat
 - cp
@@ -48,6 +44,12 @@ TODO: prompt for agent tool
 - rm
 - tail
 - touch
+
+## Agents
+
+vsh is designed to be a tool used by agents to enable the benefits of a filesystem like progressive disclosure.
+
+[Agent Tool Prompt](docs/agent-tool-prompt.md) is a prompt that can be used as a tool description for an agent.
 
 ## Grammar
 

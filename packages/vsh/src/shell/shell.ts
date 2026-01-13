@@ -1,6 +1,4 @@
-import { compile } from '@vsh/compiler/compile';
-import type { PipelineIR } from '@vsh/compiler/ir';
-import { parse } from '@vsh/compiler/parser';
+import { compile, type PipelineIR, parse } from '@vsh/compiler';
 
 import { collect } from '../consumer/consumer';
 import { type ExecuteResult, execute } from '../execute/execute';

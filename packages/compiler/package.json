@@ -1,16 +1,21 @@
 {
-  "devDependencies": {
-    "@tsconfig/bun": "catalog:",
-    "@types/bun": "catalog:"
-  },
-  "exports": {
-    "./compile": "./src/compile/compile.ts",
-    "./ir": "./src/ir.ts",
-    "./parser": "./src/parser/parser.ts"
-  },
-  "name": "@vsh/compiler",
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "type": "module"
+	"devDependencies": {
+		"@tsconfig/bun": "catalog:",
+		"@types/bun": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "^5.0.0"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"prepublishOnly": "bun run build"
+	},
+	"name": "@vsh/compiler",
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./dist/index.mjs"
+	}
 }

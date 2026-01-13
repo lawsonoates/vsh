@@ -1,19 +1,53 @@
 {
-  "dependencies": {
-    "@vsh/compiler": "workspace:*",
-    "remeda": "^2.33.1"
-  },
-  "devDependencies": {
-    "@tsconfig/bun": "catalog:",
-    "@types/bun": "catalog:"
-  },
-  "exports": {
-    ".": "./src/shell/shell.ts",
-    "./fs": "./src/fs/memory.ts"
-  },
-  "name": "vsh",
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "type": "module"
+	"author": "Lawson Oates (https://github.com/lawsonoates)",
+	"dependencies": {
+		"remeda": "^2.33.1"
+	},
+	"description": "A library of simulated bash commands",
+	"devDependencies": {
+		"@tsconfig/bun": "catalog:",
+		"@types/bun": "catalog:",
+		"@vsh/compiler": "workspace:*",
+		"typescript": "^5.0.0",
+		"tsdown": "catalog:"
+	},
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		},
+		"./fs": {
+			"import": "./dist/fs.mjs",
+			"types": "./dist/fs.d.mts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"homepage": "https://github.com/lawsonoates/vsh#readme",
+	"keywords": [
+		"bash",
+		"shell",
+		"virtual",
+		"agent",
+		"typescript"
+	],
+	"license": "MIT",
+	"main": "./dist/index.mjs",
+	"module": "./dist/index.mjs",
+	"name": "shellfs",
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/lawsonoates/vsh"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"prepublishOnly": "bun run build"
+	},
+	"type": "module",
+	"types": "./dist/index.d.mts",
+	"version": "0.1.0"
 }
