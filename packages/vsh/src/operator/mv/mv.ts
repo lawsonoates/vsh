@@ -30,10 +30,14 @@ export function mv(fs: FS): Effect<{ srcs: string[]; dest: string }> {
 					);
 					await moveFile(fs, src, newPath);
 				} else {
-					// Dest is a file, overwrite check would be here
-					await moveFile(fs, src, dest);
+					// Dest is a file, throw error
+					throw new Error(`Destination file already exists: ${dest}`);
 				}
-			} catch {
+			} catch (error) {
+				// Check if error is about existing file
+				if ((error as Error).message.includes('already exists')) {
+					throw error;
+				}
 				// Dest doesn't exist, move src to dest
 				await moveFile(fs, src, dest);
 			}

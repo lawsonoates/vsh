@@ -157,6 +157,14 @@ export function literal(value: string): ExpandedWord {
 }
 
 /**
+ * Create a SimpleCommandIR for testing purposes.
+ * Convenience helper that creates a command with a name and arguments.
+ */
+export function cmd(name: string, args: ExpandedWord[]): SimpleCommandIR {
+	return { name: literal(name), args, redirections: [] };
+}
+
+/**
  * Create a glob ExpandedWord.
  */
 export function glob(pattern: string, expanded: string[] = []): ExpandedWord {

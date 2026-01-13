@@ -1,56 +1,62 @@
 import { expect, test } from 'bun:test';
 
+import { cmd, literal } from '@/ir';
 import { compileTouch } from './touch';
 
 test('touch with single file', () => {
-	const result = compileTouch({ args: ['file.txt'], name: 'touch' });
+	const result = compileTouch(cmd('touch', [literal('file.txt')]));
 	expect(result).toEqual({
-		args: { files: ['file.txt'] },
+		args: { files: [literal('file.txt')] },
 		cmd: 'touch',
 	});
 });
 
 test('touch with multiple files', () => {
-	const result = compileTouch({
-		args: ['file1.txt', 'file2.txt', 'file3.txt'],
-		name: 'touch',
-	});
+	const result = compileTouch(
+		cmd('touch', [
+			literal('file1.txt'),
+			literal('file2.txt'),
+			literal('file3.txt'),
+		])
+	);
 	expect(result).toEqual({
-		args: { files: ['file1.txt', 'file2.txt', 'file3.txt'] },
+		args: {
+			files: [
+				literal('file1.txt'),
+				literal('file2.txt'),
+				literal('file3.txt'),
+			],
+		},
 		cmd: 'touch',
 	});
 });
 
 test('touch with absolute path', () => {
-	const result = compileTouch({
-		args: ['/tmp/file.txt'],
-		name: 'touch',
-	});
+	const result = compileTouch(cmd('touch', [literal('/tmp/file.txt')]));
 	expect(result).toEqual({
-		args: { files: ['/tmp/file.txt'] },
+		args: { files: [literal('/tmp/file.txt')] },
 		cmd: 'touch',
 	});
 });
 
 test('touch with flags (ignored)', () => {
-	const result = compileTouch({
-		args: ['-a', '-m', 'file.txt'],
-		name: 'touch',
-	});
+	const result = compileTouch(
+		cmd('touch', [literal('-a'), literal('-m'), literal('file.txt')])
+	);
 	expect(result).toEqual({
-		args: { files: ['file.txt'] },
+		args: { files: [literal('file.txt')] },
 		cmd: 'touch',
 	});
 });
 
 test('touch with no arguments throws error', () => {
 	expect(() => {
-		compileTouch({ args: [], name: 'touch' });
+		compileTouch(cmd('touch', []));
 	}).toThrow('touch requires at least one file');
 });
 
 test('touch with only flags throws error', () => {
 	expect(() => {
-		compileTouch({ args: ['-a', '-m'], name: 'touch' });
+		compileTouch(cmd('touch', [literal('-a'), literal('-m')]));
 	}).toThrow('touch requires at least one file');
 });

@@ -1,28 +1,31 @@
 import { expect, test } from 'bun:test';
 
+import { cmd, literal } from '@/ir';
 import { compileCp } from './cp';
 
 test('cp with source and destination', () => {
-	const result = compileCp({
-		args: ['file.txt', 'file_copy.txt'],
-		name: 'cp',
-	});
+	const result = compileCp(
+		cmd('cp', [literal('file.txt'), literal('file_copy.txt')])
+	);
 	expect(result).toEqual({
-		args: { dest: 'file_copy.txt', recursive: false, srcs: ['file.txt'] },
+		args: {
+			dest: literal('file_copy.txt'),
+			recursive: false,
+			srcs: [literal('file.txt')],
+		},
 		cmd: 'cp',
 	});
 });
 
 test('cp with paths', () => {
-	const result = compileCp({
-		args: ['/home/user/file.txt', '/tmp/'],
-		name: 'cp',
-	});
+	const result = compileCp(
+		cmd('cp', [literal('/home/user/file.txt'), literal('/tmp/')])
+	);
 	expect(result).toEqual({
 		args: {
-			dest: '/tmp/',
+			dest: literal('/tmp/'),
 			recursive: false,
-			srcs: ['/home/user/file.txt'],
+			srcs: [literal('/home/user/file.txt')],
 		},
 		cmd: 'cp',
 	});
@@ -30,60 +33,77 @@ test('cp with paths', () => {
 
 test('cp with no source throws error', () => {
 	expect(() => {
-		compileCp({ args: [], name: 'cp' });
+		compileCp(cmd('cp', []));
 	}).toThrow('cp requires source and destination');
 });
 
 test('cp with only source throws error', () => {
 	expect(() => {
-		compileCp({ args: ['file.txt'], name: 'cp' });
+		compileCp(cmd('cp', [literal('file.txt')]));
 	}).toThrow('cp requires source and destination');
 });
 
 test('cp with multiple sources', () => {
-	const result = compileCp({
-		args: ['file1.txt', 'file2.txt', 'file3.txt'],
-		name: 'cp',
-	});
+	const result = compileCp(
+		cmd('cp', [
+			literal('file1.txt'),
+			literal('file2.txt'),
+			literal('file3.txt'),
+		])
+	);
 	expect(result).toEqual({
 		args: {
-			dest: 'file3.txt',
+			dest: literal('file3.txt'),
 			recursive: false,
-			srcs: ['file1.txt', 'file2.txt'],
+			srcs: [literal('file1.txt'), literal('file2.txt')],
 		},
 		cmd: 'cp',
 	});
 });
 
 test('cp with -r flag', () => {
-	const result = compileCp({
-		args: ['-r', 'dir1', 'dir2'],
-		name: 'cp',
-	});
+	const result = compileCp(
+		cmd('cp', [literal('-r'), literal('dir1'), literal('dir2')])
+	);
 	expect(result).toEqual({
-		args: { dest: 'dir2', recursive: true, srcs: ['dir1'] },
+		args: {
+			dest: literal('dir2'),
+			recursive: true,
+			srcs: [literal('dir1')],
+		},
 		cmd: 'cp',
 	});
 });
 
 test('cp with -r and multiple sources', () => {
-	const result = compileCp({
-		args: ['-r', 'src1', 'src2', 'destdir'],
-		name: 'cp',
-	});
+	const result = compileCp(
+		cmd('cp', [
+			literal('-r'),
+			literal('src1'),
+			literal('src2'),
+			literal('destdir'),
+		])
+	);
 	expect(result).toEqual({
-		args: { dest: 'destdir', recursive: true, srcs: ['src1', 'src2'] },
+		args: {
+			dest: literal('destdir'),
+			recursive: true,
+			srcs: [literal('src1'), literal('src2')],
+		},
 		cmd: 'cp',
 	});
 });
 
 test('cp with -f flag (ignored in compile)', () => {
-	const result = compileCp({
-		args: ['-f', 'file.txt', 'copy.txt'],
-		name: 'cp',
-	});
+	const result = compileCp(
+		cmd('cp', [literal('-f'), literal('file.txt'), literal('copy.txt')])
+	);
 	expect(result).toEqual({
-		args: { dest: 'copy.txt', recursive: false, srcs: ['file.txt'] },
+		args: {
+			dest: literal('copy.txt'),
+			recursive: false,
+			srcs: [literal('file.txt')],
+		},
 		cmd: 'cp',
 	});
 });

@@ -1,12 +1,13 @@
 import { expect, test } from 'bun:test';
 
+import { cmd, literal } from '@/ir';
 import { compileCat } from './cat';
 
 test('cat with single file', () => {
-	const result = compileCat({ args: ['file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: false,
@@ -20,13 +21,20 @@ test('cat with single file', () => {
 });
 
 test('cat with multiple files', () => {
-	const result = compileCat({
-		args: ['file1.txt', 'file2.txt', 'file3.txt'],
-		name: 'cat',
-	});
+	const result = compileCat(
+		cmd('cat', [
+			literal('file1.txt'),
+			literal('file2.txt'),
+			literal('file3.txt'),
+		])
+	);
 	expect(result).toEqual({
 		args: {
-			files: ['file1.txt', 'file2.txt', 'file3.txt'],
+			files: [
+				literal('file1.txt'),
+				literal('file2.txt'),
+				literal('file3.txt'),
+			],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: false,
@@ -41,15 +49,15 @@ test('cat with multiple files', () => {
 
 test('cat with no arguments throws error', () => {
 	expect(() => {
-		compileCat({ args: [], name: 'cat' });
+		compileCat(cmd('cat', []));
 	}).toThrow('cat requires at least one file');
 });
 
 test('cat with -n flag', () => {
-	const result = compileCat({ args: ['-n', 'file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('-n'), literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: true,
 			numberNonBlank: false,
 			showAll: false,
@@ -63,10 +71,12 @@ test('cat with -n flag', () => {
 });
 
 test('cat with combined flags -nE', () => {
-	const result = compileCat({ args: ['-nE', 'file.txt'], name: 'cat' });
+	const result = compileCat(
+		cmd('cat', [literal('-nE'), literal('file.txt')])
+	);
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: true,
 			numberNonBlank: false,
 			showAll: false,
@@ -80,10 +90,10 @@ test('cat with combined flags -nE', () => {
 });
 
 test('cat with -b flag', () => {
-	const result = compileCat({ args: ['-b', 'file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('-b'), literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: true,
 			showAll: false,
@@ -97,10 +107,10 @@ test('cat with -b flag', () => {
 });
 
 test('cat with -A flag', () => {
-	const result = compileCat({ args: ['-A', 'file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('-A'), literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: true,
@@ -114,10 +124,10 @@ test('cat with -A flag', () => {
 });
 
 test('cat with -v flag', () => {
-	const result = compileCat({ args: ['-v', 'file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('-v'), literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: false,
@@ -131,10 +141,10 @@ test('cat with -v flag', () => {
 });
 
 test('cat with -T flag', () => {
-	const result = compileCat({ args: ['-T', 'file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('-T'), literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: false,
@@ -148,10 +158,10 @@ test('cat with -T flag', () => {
 });
 
 test('cat with -s flag', () => {
-	const result = compileCat({ args: ['-s', 'file.txt'], name: 'cat' });
+	const result = compileCat(cmd('cat', [literal('-s'), literal('file.txt')]));
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: false,
@@ -165,10 +175,12 @@ test('cat with -s flag', () => {
 });
 
 test('cat with combined flags -bE', () => {
-	const result = compileCat({ args: ['-bE', 'file.txt'], name: 'cat' });
+	const result = compileCat(
+		cmd('cat', [literal('-bE'), literal('file.txt')])
+	);
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: true,
 			showAll: false,
@@ -182,10 +194,12 @@ test('cat with combined flags -bE', () => {
 });
 
 test('cat with combined flags -ATv', () => {
-	const result = compileCat({ args: ['-ATv', 'file.txt'], name: 'cat' });
+	const result = compileCat(
+		cmd('cat', [literal('-ATv'), literal('file.txt')])
+	);
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: false,
 			numberNonBlank: false,
 			showAll: true,
@@ -199,10 +213,12 @@ test('cat with combined flags -ATv', () => {
 });
 
 test('cat with combined flags -nsT', () => {
-	const result = compileCat({ args: ['-nsT', 'file.txt'], name: 'cat' });
+	const result = compileCat(
+		cmd('cat', [literal('-nsT'), literal('file.txt')])
+	);
 	expect(result).toEqual({
 		args: {
-			files: ['file.txt'],
+			files: [literal('file.txt')],
 			numberLines: true,
 			numberNonBlank: false,
 			showAll: false,
