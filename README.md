@@ -1,10 +1,15 @@
 # vsh
 
-vsh (virtual shell) is a library of POSIX shell commands (a subset) and is inspired by Bun's `$` shell api.
+vsh (virtual shell) is a simulated fish shell (subset) environment for executing filesystem-related commands.
 
-vsh commands are a filesystem-related subset (cat, head etc.) and operate on a pluggable filesystem allowing custom storage.
+vsh is inspired by Bun's `$` shell api and provides a pluggable filesystem interface allowing custom storage.
 
 vsh is designed to be used by agents needing a filesystem without having to spin up a sandbox.
+
+- why fish? it's simpler than bash.
+- why a subset of fish? vsh is only for simulating a filesystem, only a subset is really needed.
+
+The subset includes the commands listed in [Supported Commands](#supported-commands) section and has a simplified grammar (no variables, no functions, no heredocs). More details in the [Grammar](#grammar) section and the [Lexer Specification](packages/compiler/src/lexer/lexer-spec.md).
 
 ## Installation
 
@@ -27,6 +32,12 @@ const content = await $`cat hello.txt`.text();
 console.log(content);
 ```
 
+## Agents
+
+vsh is designed to be a tool used by agents to enable the benefits of a filesystem like progressive disclosure.
+
+TODO: prompt for agent tool
+
 ## Supported Commands
 - cat
 - cp
@@ -37,6 +48,17 @@ console.log(content);
 - rm
 - tail
 - touch
+
+## Grammar
+
+```ebnf
+program      ::= pipeline
+pipeline     ::= command ("|" command)*
+command      ::= word+
+word         ::= quoted | unquoted | substitution
+quoted       ::= "'" .* "'" | '"' .* '"'
+substitution ::= "(" program ")"
+```
 
 ## License
 
