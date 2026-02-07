@@ -4,6 +4,8 @@
 
 shfs (shell filesystem) is a simulated [fish shell](https://github.com/fish-shell/fish-shell) (subset) environment for executing filesystem-related commands.
 
+Live demo: [shfs.lawsonoates.com](https://shfs.lawsonoates.com)
+
 shfs is inspired by Bun's `$` shell api and provides a pluggable filesystem interface allowing custom storage.
 
 shfs is designed to be used by agents needing a filesystem without having to spin up a sandbox.

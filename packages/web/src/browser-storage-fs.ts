@@ -1,0 +1,304 @@
+import type { FS } from 'shfs/fs';
+
+interface MetadataEntry {
+	mtime: Date;
+	isDirectory: boolean;
+}
+
+interface SerializedState {
+	files: Record<string, string>;
+	directories: string[];
+	metadata: Record<string, { mtime: string; isDirectory: boolean }>;
+}
+
+interface FSState {
+	files: Map<string, Uint8Array>;
+	directories: Set<string>;
+	metadata: Map<string, MetadataEntry>;
+}
+
+const DEFAULT_STORAGE_KEY = 'shfs-browser-fs-v1';
+const TRAILING_SLASH_REGEX = /\/$/;
+const MULTIPLE_SLASH_REGEX = /\/+/g;
+
+function normalizePath(path: string): string {
+	if (path === '') {
+		return '/';
+	}
+	if (path === '/') {
+		return path;
+	}
+	return path
+		.replace(TRAILING_SLASH_REGEX, '')
+		.replace(MULTIPLE_SLASH_REGEX, '/');
+}
+
+function emptyState(): FSState {
+	const state: FSState = {
+		files: new Map(),
+		directories: new Set(['/']),
+		metadata: new Map([
+			[
+				'/',
+				{
+					isDirectory: true,
+					mtime: new Date(),
+				},
+			],
+		]),
+	};
+	return state;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+	let binary = '';
+	for (const byte of bytes) {
+		binary += String.fromCodePoint(byte);
+	}
+	return btoa(binary);
+}
+
+function base64ToBytes(serialized: string): Uint8Array {
+	const binary = atob(serialized);
+	const bytes = new Uint8Array(binary.length);
+	for (let index = 0; index < binary.length; index += 1) {
+		bytes[index] = binary.codePointAt(index) ?? 0;
+	}
+	return bytes;
+}
+
+export class BrowserStorageFS implements FS {
+	private readonly storageKey: string;
+
+	private readonly storage: Storage | null;
+
+	private readonly state: FSState;
+
+	constructor(storageKey = DEFAULT_STORAGE_KEY) {
+		this.storageKey = storageKey;
+		this.storage =
+			typeof globalThis.localStorage === 'undefined'
+				? null
+				: globalThis.localStorage;
+		this.state = this.loadState();
+	}
+
+	async readFile(path: string): Promise<Uint8Array> {
+		const normalizedPath = normalizePath(path);
+		const content = this.state.files.get(normalizedPath);
+		if (content === undefined) {
+			throw new Error(`File not found: ${path}`);
+		}
+		return content;
+	}
+
+	async *readLines(path: string): AsyncIterable<string> {
+		const content = await this.readFile(path);
+		const text = new TextDecoder().decode(content);
+		const lines = text
+			.split('\n')
+			.filter(
+				(_, index, arr) =>
+					!(index === arr.length - 1 && arr[index] === '')
+			);
+		yield* lines;
+	}
+
+	async writeFile(path: string, content: Uint8Array): Promise<void> {
+		const normalizedPath = normalizePath(path);
+		this.state.files.set(normalizedPath, content);
+		this.state.metadata.set(normalizedPath, {
+			isDirectory: false,
+			mtime: new Date(),
+		});
+		this.persist();
+	}
+
+	async deleteFile(path: string): Promise<void> {
+		const normalizedPath = normalizePath(path);
+		if (!this.state.files.has(normalizedPath)) {
+			throw new Error(`File not found: ${path}`);
+		}
+		this.state.files.delete(normalizedPath);
+		this.state.metadata.delete(normalizedPath);
+		this.persist();
+	}
+
+	async *readdir(glob: string): AsyncIterable<string> {
+		const pattern = glob
+			.replaceAll('**', '.*')
+			.replaceAll('*', '[^/]*')
+			.replaceAll('?', '[^/]')
+			.replaceAll('.', '\\.');
+
+		const regex = new RegExp(`^${pattern}$`);
+		const paths = Array.from(this.state.files.keys())
+			.filter((path) => regex.test(path))
+			.sort();
+
+		for (const path of paths) {
+			yield path;
+		}
+	}
+
+	async mkdir(path: string, recursive = false): Promise<void> {
+		const normalizedPath = normalizePath(path);
+		if (
+			this.state.directories.has(normalizedPath) ||
+			this.state.files.has(normalizedPath)
+		) {
+			throw new Error(`Directory already exists: ${path}`);
+		}
+
+		if (recursive) {
+			const parts = normalizedPath.split('/').filter(Boolean);
+			let current = '';
+			for (const part of parts) {
+				current += `/${part}`;
+				if (
+					!(
+						this.state.directories.has(current) ||
+						this.state.files.has(current)
+					)
+				) {
+					this.state.directories.add(current);
+					this.state.metadata.set(current, {
+						isDirectory: true,
+						mtime: new Date(),
+					});
+				}
+			}
+			this.persist();
+			return;
+		}
+
+		const parentPath =
+			normalizedPath.substring(0, normalizedPath.lastIndexOf('/')) || '/';
+		if (
+			parentPath !== '/' &&
+			!this.state.directories.has(parentPath) &&
+			!this.state.files.has(parentPath)
+		) {
+			throw new Error(`No such file or directory: ${parentPath}`);
+		}
+
+		this.state.directories.add(normalizedPath);
+		this.state.metadata.set(normalizedPath, {
+			isDirectory: true,
+			mtime: new Date(),
+		});
+		this.persist();
+	}
+
+	async stat(
+		path: string
+	): Promise<{ isDirectory: boolean; size: number; mtime: Date }> {
+		const normalizedPath = normalizePath(path);
+		if (this.state.directories.has(normalizedPath)) {
+			return {
+				isDirectory: true,
+				size: 0,
+				mtime:
+					this.state.metadata.get(normalizedPath)?.mtime ??
+					new Date(),
+			};
+		}
+
+		const content = this.state.files.get(normalizedPath);
+		if (content !== undefined) {
+			return {
+				isDirectory: false,
+				size: content.byteLength,
+				mtime:
+					this.state.metadata.get(normalizedPath)?.mtime ??
+					new Date(),
+			};
+		}
+
+		throw new Error(`No such file or directory: ${path}`);
+	}
+
+	async exists(path: string): Promise<boolean> {
+		const normalizedPath = normalizePath(path);
+		return (
+			this.state.files.has(normalizedPath) ||
+			this.state.directories.has(normalizedPath)
+		);
+	}
+
+	private loadState(): FSState {
+		if (this.storage === null) {
+			return emptyState();
+		}
+
+		const serialized = this.storage.getItem(this.storageKey);
+		if (serialized === null) {
+			return emptyState();
+		}
+
+		try {
+			const parsed = JSON.parse(serialized) as SerializedState;
+			const files = new Map<string, Uint8Array>();
+			for (const [path, content] of Object.entries(parsed.files)) {
+				files.set(path, base64ToBytes(content));
+			}
+
+			const directories = new Set(
+				parsed.directories.map((directory) => normalizePath(directory))
+			);
+
+			if (!directories.has('/')) {
+				directories.add('/');
+			}
+
+			const metadata = new Map<string, MetadataEntry>();
+			for (const [path, entry] of Object.entries(parsed.metadata)) {
+				metadata.set(normalizePath(path), {
+					isDirectory: entry.isDirectory,
+					mtime: new Date(entry.mtime),
+				});
+			}
+
+			if (!metadata.has('/')) {
+				metadata.set('/', { isDirectory: true, mtime: new Date() });
+			}
+
+			return {
+				directories,
+				files,
+				metadata,
+			};
+		} catch {
+			return emptyState();
+		}
+	}
+
+	private persist(): void {
+		if (this.storage === null) {
+			return;
+		}
+
+		const files = Object.fromEntries(
+			Array.from(this.state.files.entries()).map(([path, content]) => [
+				path,
+				bytesToBase64(content),
+			])
+		);
+		const metadata = Object.fromEntries(
+			Array.from(this.state.metadata.entries()).map(([path, value]) => [
+				path,
+				{
+					isDirectory: value.isDirectory,
+					mtime: value.mtime.toISOString(),
+				},
+			])
+		);
+
+		const serialized: SerializedState = {
+			directories: Array.from(this.state.directories.values()),
+			files,
+			metadata,
+		};
+		this.storage.setItem(this.storageKey, JSON.stringify(serialized));
+	}
+}

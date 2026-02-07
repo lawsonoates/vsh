@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@font-face {
+	font-family: "Geist Mono";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url("../public/geist-mono.ttf") format("truetype");
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url("../public/geist-mono-italic.ttf") format("truetype");
+}
+
+@theme {
+	--font-mono:
+		"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", "Courier New", monospace;
+}
+
+@layer base {
+	:root {
+		@apply font-mono;
+	}
+
+	body {
+		@apply m-0 min-h-screen min-w-[320px] bg-white;
+	}
+
+	html,
+	body {
+		@apply overscroll-none;
+	}
+}
+
+.terminal-resize::-webkit-resizer {
+	background: transparent;
+}
