@@ -58,7 +58,6 @@
         "remeda": "^2.33.1",
       },
       "devDependencies": {
-        "@shfs/compiler": "workspace:*",
         "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "tsdown": "catalog:",

@@ -53,6 +53,25 @@ test('cat with no arguments throws error', () => {
 	}).toThrow('cat requires at least one file');
 });
 
+test('cat with input redirection and no file arguments', () => {
+	const result = compileCat(
+		cmd('cat', [], [{ kind: 'input', target: literal('input.txt') }])
+	);
+	expect(result).toEqual({
+		args: {
+			files: [],
+			numberLines: false,
+			numberNonBlank: false,
+			showAll: false,
+			showEnds: false,
+			showNonprinting: false,
+			showTabs: false,
+			squeezeBlank: false,
+		},
+		cmd: 'cat',
+	});
+});
+
 test('cat with -n flag', () => {
 	const result = compileCat(cmd('cat', [literal('-n'), literal('file.txt')]));
 	expect(result).toEqual({

@@ -14,9 +14,10 @@
 	},
 	"scripts": {
 		"check": "ultracite check",
-		"fix": "ultracite fix"
+		"fix": "ultracite fix",
+		"typecheck": "bun x tsc --noEmit -p packages/compiler/tsconfig.json && bun x tsc --noEmit -p packages/shfs/tsconfig.json && bun x tsc --noEmit -p examples/agent/tsconfig.json && bun x tsc --noEmit -p examples/turso-agent-fs/tsconfig.json"
 	},
-	"packageManager": "bun@1.3.5",
+	"packageManager": "bun@1.3.6",
 	"workspaces": [
 		"packages/*",
 		"examples/*"

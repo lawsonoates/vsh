@@ -15,9 +15,11 @@ import {
 	type ExpandedWord,
 	glob,
 	literal,
+	type PipelineIR,
 	type RedirectionIR,
 	type SimpleCommandIR,
 	type SourceIR,
+	type StepIR,
 } from '../ir';
 import type {
 	CommandSubPart,
@@ -239,7 +241,11 @@ class ProgramCompiler {
 		}
 
 		const handler = CommandHandler.get(cmdName);
-		return handler(cmd);
+		const step = handler(cmd);
+		return {
+			...step,
+			redirections: cmd.redirections,
+		};
 	}
 
 	/**

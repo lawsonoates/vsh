@@ -7,7 +7,6 @@
 	"devDependencies": {
 		"@tsconfig/bun": "catalog:",
 		"@types/bun": "catalog:",
-		"@shfs/compiler": "workspace:*",
 		"typescript": "^5.0.0",
 		"tsdown": "catalog:"
 	},
@@ -49,5 +48,5 @@
 	},
 	"type": "module",
 	"types": "./dist/index.d.mts",
-	"version": "0.1.0"
+	"version": "0.1.1"
 }

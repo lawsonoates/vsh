@@ -40,7 +40,11 @@ export function compileCat(cmd: SimpleCommandIR): StepIR {
 		}
 	}
 
-	if (fileArgs.length === 0) {
+	const hasInputRedirection = cmd.redirections.some(
+		(redirection) => redirection.kind === 'input'
+	);
+
+	if (fileArgs.length === 0 && !hasInputRedirection) {
 		throw new Error('cat requires at least one file');
 	}
 

@@ -46,6 +46,7 @@ export type SourceIR =
  */
 export interface CatStep {
 	cmd: 'cat';
+	redirections?: RedirectionIR[];
 	args: {
 		files: ExpandedWord[];
 		numberLines?: boolean;
@@ -63,6 +64,7 @@ export interface CatStep {
  */
 export interface CpStep {
 	cmd: 'cp';
+	redirections?: RedirectionIR[];
 	args: { srcs: ExpandedWord[]; dest: ExpandedWord; recursive: boolean };
 }
 
@@ -71,6 +73,7 @@ export interface CpStep {
  */
 export interface HeadStep {
 	cmd: 'head';
+	redirections?: RedirectionIR[];
 	args: { n: number; files: ExpandedWord[] };
 }
 
@@ -79,6 +82,7 @@ export interface HeadStep {
  */
 export interface LsStep {
 	cmd: 'ls';
+	redirections?: RedirectionIR[];
 	args: { paths: ExpandedWord[] };
 }
 
@@ -87,6 +91,7 @@ export interface LsStep {
  */
 export interface MkdirStep {
 	cmd: 'mkdir';
+	redirections?: RedirectionIR[];
 	args: { paths: ExpandedWord[]; recursive: boolean };
 }
 
@@ -95,6 +100,7 @@ export interface MkdirStep {
  */
 export interface MvStep {
 	cmd: 'mv';
+	redirections?: RedirectionIR[];
 	args: { srcs: ExpandedWord[]; dest: ExpandedWord };
 }
 
@@ -103,6 +109,7 @@ export interface MvStep {
  */
 export interface RmStep {
 	cmd: 'rm';
+	redirections?: RedirectionIR[];
 	args: { paths: ExpandedWord[]; recursive: boolean };
 }
 
@@ -111,6 +118,7 @@ export interface RmStep {
  */
 export interface TailStep {
 	cmd: 'tail';
+	redirections?: RedirectionIR[];
 	args: { n: number; files: ExpandedWord[] };
 }
 
@@ -119,6 +127,7 @@ export interface TailStep {
  */
 export interface TouchStep {
 	cmd: 'touch';
+	redirections?: RedirectionIR[];
 	args: { files: ExpandedWord[] };
 }
 
@@ -160,8 +169,12 @@ export function literal(value: string): ExpandedWord {
  * Create a SimpleCommandIR for testing purposes.
  * Convenience helper that creates a command with a name and arguments.
  */
-export function cmd(name: string, args: ExpandedWord[]): SimpleCommandIR {
-	return { name: literal(name), args, redirections: [] };
+export function cmd(
+	name: string,
+	args: ExpandedWord[],
+	redirections: RedirectionIR[] = []
+): SimpleCommandIR {
+	return { name: literal(name), args, redirections };
 }
 
 /**
