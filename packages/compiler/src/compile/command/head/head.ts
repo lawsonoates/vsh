@@ -8,56 +8,86 @@ import {
 	type SimpleCommandIR,
 	type StepIR,
 } from '../../../ir';
+import {
+	createWordParser,
+	type FlagDef,
+	type ParsedFlagValue,
+} from '../arg/parse';
 
-const NEGATIVE_NUMBER_REGEX = /^-\d+$/;
+const DEFAULT_LINE_COUNT = 10;
+const flags: Record<string, FlagDef> = {
+	lines: { multiple: true, short: 'n', takesValue: true },
+};
+const parseHeadArgs = createWordParser<ExpandedWord>(
+	flags,
+	expandedWordToString
+);
+const MISSING_N_VALUE_PREFIX = 'Flag -n requires a value';
+const UNKNOWN_FLAG_PREFIX = 'Unknown flag:';
 
 /**
  * Compile a head command from SimpleCommandIR to StepIR.
  */
 export function compileHead(cmd: SimpleCommandIR): StepIR {
-	let n = 10; // default
-	const files: ExpandedWord[] = [];
+	const parsed = parseHeadArgsOrThrow(cmd.args);
 
-	let skipNext = false;
-	for (let i = 0; i < cmd.args.length; i++) {
-		if (skipNext) {
-			skipNext = false;
-			continue;
-		}
-
-		const arg = cmd.args[i];
-		if (!arg) {
-			continue;
-		}
-
-		const argStr = expandedWordToString(arg);
-
-		// Handle -n N format (e.g., -n 10)
-		if (argStr === '-n') {
-			const numArg = cmd.args[i + 1];
-			if (!numArg) {
-				throw new Error('head -n requires a number');
-			}
-			n = Number(expandedWordToString(numArg));
-			if (!Number.isFinite(n)) {
-				throw new Error('Invalid head count');
-			}
-			skipNext = true;
-		}
-		// Handle -N format (e.g., -10)
-		else if (argStr.startsWith('-') && NEGATIVE_NUMBER_REGEX.test(argStr)) {
-			n = Number(argStr.slice(1));
-		}
-		// Everything else is a file
-		else if (argStr.startsWith('-')) {
-			throw new Error('Unknown head option');
-		} else {
-			files.push(arg);
-		}
-	}
+	const n = parseHeadCount(parsed.flags.lines);
+	const files = parsed.positionalWords;
 
 	return {
 		cmd: 'head',
 		args: { files, n },
 	} as const;
+}
+
+function parseHeadCount(value: ParsedFlagValue | undefined): number {
+	const lastValue = getLastValueToken(value);
+	if (lastValue === undefined) {
+		return DEFAULT_LINE_COUNT;
+	}
+
+	const parsedValue = Number(lastValue);
+	if (!Number.isFinite(parsedValue)) {
+		throw new Error('Invalid head count');
+	}
+
+	return parsedValue;
+}
+
+function getLastValueToken(
+	value: ParsedFlagValue | undefined
+): string | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		const lastValue = value.at(-1);
+		return lastValue;
+	}
+	throw new Error('Invalid head count');
+}
+
+function parseHeadArgsOrThrow(
+	args: readonly ExpandedWord[]
+): ReturnType<typeof parseHeadArgs> {
+	try {
+		return parseHeadArgs(args, {
+			negativeNumberFlag: 'lines',
+			negativeNumberPolicy: 'value',
+		});
+	} catch (error) {
+		if (!(error instanceof Error)) {
+			throw new Error('Unknown head option');
+		}
+		if (error.message.startsWith(MISSING_N_VALUE_PREFIX)) {
+			throw new Error('head -n requires a number');
+		}
+		if (error.message.startsWith(UNKNOWN_FLAG_PREFIX)) {
+			throw new Error('Unknown head option');
+		}
+		throw error;
+	}
 }

@@ -249,3 +249,73 @@ test('cat with combined flags -nsT', () => {
 		cmd: 'cat',
 	});
 });
+
+test('cat treats "-" as a positional file token', () => {
+	const result = compileCat(cmd('cat', [literal('-')]));
+	expect(result).toEqual({
+		args: {
+			files: [literal('-')],
+			numberLines: false,
+			numberNonBlank: false,
+			showAll: false,
+			showEnds: false,
+			showNonprinting: false,
+			showTabs: false,
+			squeezeBlank: false,
+		},
+		cmd: 'cat',
+	});
+});
+
+test('cat treats negative-number-like token as positional', () => {
+	const result = compileCat(cmd('cat', [literal('-1')]));
+	expect(result).toEqual({
+		args: {
+			files: [literal('-1')],
+			numberLines: false,
+			numberNonBlank: false,
+			showAll: false,
+			showEnds: false,
+			showNonprinting: false,
+			showTabs: false,
+			squeezeBlank: false,
+		},
+		cmd: 'cat',
+	});
+});
+
+test('cat treats tokens after "--" as positional files', () => {
+	const result = compileCat(cmd('cat', [literal('--'), literal('-n')]));
+	expect(result).toEqual({
+		args: {
+			files: [literal('-n')],
+			numberLines: false,
+			numberNonBlank: false,
+			showAll: false,
+			showEnds: false,
+			showNonprinting: false,
+			showTabs: false,
+			squeezeBlank: false,
+		},
+		cmd: 'cat',
+	});
+});
+
+test('cat keeps flags before "--" and files after "--"', () => {
+	const result = compileCat(
+		cmd('cat', [literal('-n'), literal('--'), literal('-b')])
+	);
+	expect(result).toEqual({
+		args: {
+			files: [literal('-b')],
+			numberLines: true,
+			numberNonBlank: false,
+			showAll: false,
+			showEnds: false,
+			showNonprinting: false,
+			showTabs: false,
+			squeezeBlank: false,
+		},
+		cmd: 'cat',
+	});
+});

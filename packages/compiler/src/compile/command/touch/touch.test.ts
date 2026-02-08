@@ -6,7 +6,11 @@ import { compileTouch } from './touch';
 test('touch with single file', () => {
 	const result = compileTouch(cmd('touch', [literal('file.txt')]));
 	expect(result).toEqual({
-		args: { files: [literal('file.txt')] },
+		args: {
+			accessTimeOnly: false,
+			files: [literal('file.txt')],
+			modificationTimeOnly: false,
+		},
 		cmd: 'touch',
 	});
 });
@@ -21,11 +25,13 @@ test('touch with multiple files', () => {
 	);
 	expect(result).toEqual({
 		args: {
+			accessTimeOnly: false,
 			files: [
 				literal('file1.txt'),
 				literal('file2.txt'),
 				literal('file3.txt'),
 			],
+			modificationTimeOnly: false,
 		},
 		cmd: 'touch',
 	});
@@ -34,17 +40,25 @@ test('touch with multiple files', () => {
 test('touch with absolute path', () => {
 	const result = compileTouch(cmd('touch', [literal('/tmp/file.txt')]));
 	expect(result).toEqual({
-		args: { files: [literal('/tmp/file.txt')] },
+		args: {
+			accessTimeOnly: false,
+			files: [literal('/tmp/file.txt')],
+			modificationTimeOnly: false,
+		},
 		cmd: 'touch',
 	});
 });
 
-test('touch with flags (ignored)', () => {
+test('touch maps access/modify flags into args', () => {
 	const result = compileTouch(
 		cmd('touch', [literal('-a'), literal('-m'), literal('file.txt')])
 	);
 	expect(result).toEqual({
-		args: { files: [literal('file.txt')] },
+		args: {
+			accessTimeOnly: true,
+			files: [literal('file.txt')],
+			modificationTimeOnly: true,
+		},
 		cmd: 'touch',
 	});
 });

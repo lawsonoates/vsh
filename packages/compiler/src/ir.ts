@@ -65,7 +65,13 @@ export interface CatStep {
 export interface CpStep {
 	cmd: 'cp';
 	redirections?: RedirectionIR[];
-	args: { srcs: ExpandedWord[]; dest: ExpandedWord; recursive: boolean };
+	args: {
+		dest: ExpandedWord;
+		force?: boolean;
+		interactive?: boolean;
+		recursive: boolean;
+		srcs: ExpandedWord[];
+	};
 }
 
 /**
@@ -83,7 +89,7 @@ export interface HeadStep {
 export interface LsStep {
 	cmd: 'ls';
 	redirections?: RedirectionIR[];
-	args: { paths: ExpandedWord[] };
+	args: { longFormat?: boolean; paths: ExpandedWord[]; showAll?: boolean };
 }
 
 /**
@@ -92,7 +98,7 @@ export interface LsStep {
 export interface MkdirStep {
 	cmd: 'mkdir';
 	redirections?: RedirectionIR[];
-	args: { paths: ExpandedWord[]; recursive: boolean };
+	args: { parents?: boolean; paths: ExpandedWord[]; recursive: boolean };
 }
 
 /**
@@ -101,7 +107,12 @@ export interface MkdirStep {
 export interface MvStep {
 	cmd: 'mv';
 	redirections?: RedirectionIR[];
-	args: { srcs: ExpandedWord[]; dest: ExpandedWord };
+	args: {
+		dest: ExpandedWord;
+		force?: boolean;
+		interactive?: boolean;
+		srcs: ExpandedWord[];
+	};
 }
 
 /**
@@ -110,7 +121,12 @@ export interface MvStep {
 export interface RmStep {
 	cmd: 'rm';
 	redirections?: RedirectionIR[];
-	args: { paths: ExpandedWord[]; recursive: boolean };
+	args: {
+		force?: boolean;
+		interactive?: boolean;
+		paths: ExpandedWord[];
+		recursive: boolean;
+	};
 }
 
 /**
@@ -128,7 +144,11 @@ export interface TailStep {
 export interface TouchStep {
 	cmd: 'touch';
 	redirections?: RedirectionIR[];
-	args: { files: ExpandedWord[] };
+	args: {
+		accessTimeOnly?: boolean;
+		files: ExpandedWord[];
+		modificationTimeOnly?: boolean;
+	};
 }
 
 /**

@@ -9,7 +9,7 @@ import {
 	type StepIR,
 } from '../../../ir';
 import type { Flag } from '../arg/flag';
-import { parseArgs } from '../arg/parse';
+import { createArgParser } from '../arg/parse';
 
 const flags: Record<string, Flag> = {
 	number: { short: 'n', takesValue: false },
@@ -21,6 +21,8 @@ const flags: Record<string, Flag> = {
 	squeezeBlank: { short: 's', takesValue: false },
 };
 
+const parseCatArgs = createArgParser(flags);
+
 /**
  * Compile a cat command from SimpleCommandIR to StepIR.
  */
@@ -28,14 +30,13 @@ export function compileCat(cmd: SimpleCommandIR): StepIR {
 	// Convert ExpandedWord[] to string[] for arg parsing
 	const argStrings = cmd.args.map(expandedWordToString);
 
-	const parsed = parseArgs(argStrings, flags);
+	const parsed = parseCatArgs(argStrings);
 
-	// Filter to get only positional arguments (files)
+	// Use parser positional indices to map back to original ExpandedWord args.
 	const fileArgs: ExpandedWord[] = [];
-	for (const arg of cmd.args) {
-		const argStr = expandedWordToString(arg);
-		// Skip flags
-		if (!argStr.startsWith('-')) {
+	for (const positionalIndex of parsed.positionalIndices) {
+		const arg = cmd.args[positionalIndex];
+		if (arg !== undefined) {
 			fileArgs.push(arg);
 		}
 	}

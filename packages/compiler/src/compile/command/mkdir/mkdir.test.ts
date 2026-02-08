@@ -6,7 +6,7 @@ import { compileMkdir } from './mkdir';
 test('mkdir with single directory', () => {
 	const result = compileMkdir(cmd('mkdir', [literal('mydir')]));
 	expect(result).toEqual({
-		args: { paths: [literal('mydir')], recursive: false },
+		args: { parents: false, paths: [literal('mydir')], recursive: false },
 		cmd: 'mkdir',
 	});
 });
@@ -17,6 +17,7 @@ test('mkdir with multiple directories', () => {
 	);
 	expect(result).toEqual({
 		args: {
+			parents: false,
 			paths: [literal('dir1'), literal('dir2'), literal('dir3')],
 			recursive: false,
 		},
@@ -27,7 +28,11 @@ test('mkdir with multiple directories', () => {
 test('mkdir with absolute path', () => {
 	const result = compileMkdir(cmd('mkdir', [literal('/tmp/mydir')]));
 	expect(result).toEqual({
-		args: { paths: [literal('/tmp/mydir')], recursive: false },
+		args: {
+			parents: false,
+			paths: [literal('/tmp/mydir')],
+			recursive: false,
+		},
 		cmd: 'mkdir',
 	});
 });
@@ -37,7 +42,11 @@ test('mkdir with -p flag (recursive)', () => {
 		cmd('mkdir', [literal('-p'), literal('/tmp/a/b/c')])
 	);
 	expect(result).toEqual({
-		args: { paths: [literal('/tmp/a/b/c')], recursive: true },
+		args: {
+			parents: true,
+			paths: [literal('/tmp/a/b/c')],
+			recursive: true,
+		},
 		cmd: 'mkdir',
 	});
 });
@@ -52,6 +61,7 @@ test('mkdir with -p flag and multiple paths', () => {
 	);
 	expect(result).toEqual({
 		args: {
+			parents: true,
 			paths: [literal('dir1/subdir'), literal('dir2/subdir')],
 			recursive: true,
 		},

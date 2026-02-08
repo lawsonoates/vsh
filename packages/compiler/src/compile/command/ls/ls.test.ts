@@ -6,7 +6,7 @@ import { compileLs } from './ls';
 test('ls with no arguments defaults to current directory', () => {
 	const result = compileLs(cmd('ls', []));
 	expect(result).toEqual({
-		args: { paths: [literal('.')] },
+		args: { longFormat: false, paths: [literal('.')], showAll: false },
 		cmd: 'ls',
 	});
 });
@@ -14,7 +14,7 @@ test('ls with no arguments defaults to current directory', () => {
 test('ls with single path', () => {
 	const result = compileLs(cmd('ls', [literal('/tmp')]));
 	expect(result).toEqual({
-		args: { paths: [literal('/tmp')] },
+		args: { longFormat: false, paths: [literal('/tmp')], showAll: false },
 		cmd: 'ls',
 	});
 });
@@ -24,7 +24,11 @@ test('ls with multiple paths', () => {
 		cmd('ls', [literal('/home'), literal('/tmp'), literal('/var')])
 	);
 	expect(result).toEqual({
-		args: { paths: [literal('/home'), literal('/tmp'), literal('/var')] },
+		args: {
+			longFormat: false,
+			paths: [literal('/home'), literal('/tmp'), literal('/var')],
+			showAll: false,
+		},
 		cmd: 'ls',
 	});
 });
@@ -32,7 +36,17 @@ test('ls with multiple paths', () => {
 test('ls with relative path', () => {
 	const result = compileLs(cmd('ls', [literal('./src')]));
 	expect(result).toEqual({
-		args: { paths: [literal('./src')] },
+		args: { longFormat: false, paths: [literal('./src')], showAll: false },
+		cmd: 'ls',
+	});
+});
+
+test('ls with -a and -l flags', () => {
+	const result = compileLs(
+		cmd('ls', [literal('-a'), literal('-l'), literal('/tmp')])
+	);
+	expect(result).toEqual({
+		args: { longFormat: true, paths: [literal('/tmp')], showAll: true },
 		cmd: 'ls',
 	});
 });

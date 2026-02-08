@@ -8,19 +8,24 @@ import {
 	type SimpleCommandIR,
 	type StepIR,
 } from '../../../ir';
+import type { Flag } from '../arg/flag';
+import { createWordParser } from '../arg/parse';
+
+const flags: Record<string, Flag> = {
+	force: { short: 'f', takesValue: false },
+	interactive: { short: 'i', takesValue: false },
+};
+
+const parseMvArgs = createWordParser<ExpandedWord>(flags, expandedWordToString);
 
 /**
  * Compile a mv command from SimpleCommandIR to StepIR.
  */
 export function compileMv(cmd: SimpleCommandIR): StepIR {
-	const filteredArgs: ExpandedWord[] = [];
-
-	for (const arg of cmd.args) {
-		const argStr = expandedWordToString(arg);
-		if (argStr !== '-f' && argStr !== '-i') {
-			filteredArgs.push(arg);
-		}
-	}
+	const parsed = parseMvArgs(cmd.args, { unknownFlagPolicy: 'positional' });
+	const force = parsed.flags.force === true;
+	const interactive = parsed.flags.interactive === true;
+	const filteredArgs = parsed.positionalWords;
 
 	if (filteredArgs.length < 2) {
 		throw new Error('mv requires source and destination');
@@ -34,6 +39,6 @@ export function compileMv(cmd: SimpleCommandIR): StepIR {
 
 	return {
 		cmd: 'mv',
-		args: { dest, srcs },
+		args: { dest, force, interactive, srcs },
 	} as const;
 }

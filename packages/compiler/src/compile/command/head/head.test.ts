@@ -56,6 +56,31 @@ test('head with -n and multiple files', () => {
 	});
 });
 
+test('head with -n=value format', () => {
+	const result = compileHead(
+		cmd('head', [literal('-n=7'), literal('file.txt')])
+	);
+	expect(result).toEqual({
+		args: { files: [literal('file.txt')], n: 7 },
+		cmd: 'head',
+	});
+});
+
+test('head with repeated count flags uses last value', () => {
+	const result = compileHead(
+		cmd('head', [
+			literal('-n'),
+			literal('5'),
+			literal('-10'),
+			literal('file.txt'),
+		])
+	);
+	expect(result).toEqual({
+		args: { files: [literal('file.txt')], n: 10 },
+		cmd: 'head',
+	});
+});
+
 test('head with absolute path', () => {
 	const result = compileHead(cmd('head', [literal('/tmp/file.txt')]));
 	expect(result).toEqual({

@@ -8,22 +8,26 @@ import {
 	type SimpleCommandIR,
 	type StepIR,
 } from '../../../ir';
+import type { Flag } from '../arg/flag';
+import { createWordParser } from '../arg/parse';
+
+const flags: Record<string, Flag> = {
+	force: { short: 'f', takesValue: false },
+	interactive: { short: 'i', takesValue: false },
+	recursive: { short: 'r', takesValue: false },
+};
+
+const parseCpArgs = createWordParser<ExpandedWord>(flags, expandedWordToString);
 
 /**
  * Compile a cp command from SimpleCommandIR to StepIR.
  */
 export function compileCp(cmd: SimpleCommandIR): StepIR {
-	let recursive = false;
-	const filteredArgs: ExpandedWord[] = [];
-
-	for (const arg of cmd.args) {
-		const argStr = expandedWordToString(arg);
-		if (argStr === '-r') {
-			recursive = true;
-		} else if (argStr !== '-f' && argStr !== '-i') {
-			filteredArgs.push(arg);
-		}
-	}
+	const parsed = parseCpArgs(cmd.args, { unknownFlagPolicy: 'positional' });
+	const recursive = parsed.flags.recursive === true;
+	const force = parsed.flags.force === true;
+	const interactive = parsed.flags.interactive === true;
+	const filteredArgs = parsed.positionalWords;
 
 	if (filteredArgs.length < 2) {
 		throw new Error('cp requires source and destination');
@@ -37,6 +41,6 @@ export function compileCp(cmd: SimpleCommandIR): StepIR {
 
 	return {
 		cmd: 'cp',
-		args: { dest, recursive, srcs },
+		args: { dest, force, interactive, recursive, srcs },
 	} as const;
 }

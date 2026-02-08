@@ -8,7 +8,12 @@ test('mv with single file', () => {
 		cmd('mv', [literal('source.txt'), literal('dest.txt')])
 	);
 	expect(result).toEqual({
-		args: { srcs: [literal('source.txt')], dest: literal('dest.txt') },
+		args: {
+			dest: literal('dest.txt'),
+			force: false,
+			interactive: false,
+			srcs: [literal('source.txt')],
+		},
 		cmd: 'mv',
 	});
 });
@@ -19,8 +24,10 @@ test('mv with multiple sources', () => {
 	);
 	expect(result).toEqual({
 		args: {
-			srcs: [literal('file1.txt'), literal('file2.txt')],
 			dest: literal('dir/'),
+			force: false,
+			interactive: false,
+			srcs: [literal('file1.txt'), literal('file2.txt')],
 		},
 		cmd: 'mv',
 	});
@@ -32,29 +39,41 @@ test('mv with absolute paths', () => {
 	);
 	expect(result).toEqual({
 		args: {
-			srcs: [literal('/tmp/file.txt')],
 			dest: literal('/home/user/file.txt'),
+			force: false,
+			interactive: false,
+			srcs: [literal('/tmp/file.txt')],
 		},
 		cmd: 'mv',
 	});
 });
 
-test('mv with -f flag (ignored in compile)', () => {
+test('mv with -f flag maps to force mode', () => {
 	const result = compileMv(
 		cmd('mv', [literal('-f'), literal('source.txt'), literal('dest.txt')])
 	);
 	expect(result).toEqual({
-		args: { srcs: [literal('source.txt')], dest: literal('dest.txt') },
+		args: {
+			dest: literal('dest.txt'),
+			force: true,
+			interactive: false,
+			srcs: [literal('source.txt')],
+		},
 		cmd: 'mv',
 	});
 });
 
-test('mv with -i flag (ignored in compile)', () => {
+test('mv with -i flag maps to interactive mode', () => {
 	const result = compileMv(
 		cmd('mv', [literal('source.txt'), literal('-i'), literal('dest.txt')])
 	);
 	expect(result).toEqual({
-		args: { srcs: [literal('source.txt')], dest: literal('dest.txt') },
+		args: {
+			dest: literal('dest.txt'),
+			force: false,
+			interactive: true,
+			srcs: [literal('source.txt')],
+		},
 		cmd: 'mv',
 	});
 });

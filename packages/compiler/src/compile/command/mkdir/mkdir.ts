@@ -8,22 +8,29 @@ import {
 	type SimpleCommandIR,
 	type StepIR,
 } from '../../../ir';
+import type { Flag } from '../arg/flag';
+import { createWordParser } from '../arg/parse';
+
+const flags: Record<string, Flag> = {
+	parents: { short: 'p', takesValue: false },
+};
+
+const parseMkdirArgs = createWordParser<ExpandedWord>(
+	flags,
+	expandedWordToString
+);
 
 /**
  * Compile a mkdir command from SimpleCommandIR to StepIR.
  */
 export function compileMkdir(cmd: SimpleCommandIR): StepIR {
-	let recursive = false;
-	const paths: ExpandedWord[] = [];
+	const parsed = parseMkdirArgs(cmd.args, {
+		unknownFlagPolicy: 'positional',
+	});
 
-	for (const arg of cmd.args) {
-		const argStr = expandedWordToString(arg);
-		if (argStr === '-p') {
-			recursive = true;
-		} else {
-			paths.push(arg);
-		}
-	}
+	const parents = parsed.flags.parents === true;
+	const recursive = parents;
+	const paths = parsed.positionalWords;
 
 	if (paths.length === 0) {
 		throw new Error('mkdir requires at least one path');
@@ -31,6 +38,6 @@ export function compileMkdir(cmd: SimpleCommandIR): StepIR {
 
 	return {
 		cmd: 'mkdir',
-		args: { paths, recursive },
+		args: { parents, paths, recursive },
 	} as const;
 }

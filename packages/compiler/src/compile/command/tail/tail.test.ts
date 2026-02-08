@@ -27,6 +27,24 @@ test('tail with -n and larger number', () => {
 	});
 });
 
+test('tail with -n=value format', () => {
+	const result = compileTail(cmd('tail', [literal('-n=12')]));
+	expect(result).toEqual({
+		args: { files: [], n: 12 },
+		cmd: 'tail',
+	});
+});
+
+test('tail with repeated count flags uses last value', () => {
+	const result = compileTail(
+		cmd('tail', [literal('-n'), literal('5'), literal('-20')])
+	);
+	expect(result).toEqual({
+		args: { files: [], n: 20 },
+		cmd: 'tail',
+	});
+});
+
 test('tail with no arguments defaults to n=10', () => {
 	const result = compileTail(cmd('tail', []));
 	expect(result).toEqual({

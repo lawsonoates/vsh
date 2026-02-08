@@ -6,7 +6,12 @@ import { compileRm } from './rm';
 test('rm with single file', () => {
 	const result = compileRm(cmd('rm', [literal('file.txt')]));
 	expect(result).toEqual({
-		args: { paths: [literal('file.txt')], recursive: false },
+		args: {
+			force: false,
+			interactive: false,
+			paths: [literal('file.txt')],
+			recursive: false,
+		},
 		cmd: 'rm',
 	});
 });
@@ -14,7 +19,12 @@ test('rm with single file', () => {
 test('rm with absolute path', () => {
 	const result = compileRm(cmd('rm', [literal('/tmp/file.txt')]));
 	expect(result).toEqual({
-		args: { paths: [literal('/tmp/file.txt')], recursive: false },
+		args: {
+			force: false,
+			interactive: false,
+			paths: [literal('/tmp/file.txt')],
+			recursive: false,
+		},
 		cmd: 'rm',
 	});
 });
@@ -35,6 +45,8 @@ test('rm with multiple files', () => {
 	);
 	expect(result).toEqual({
 		args: {
+			force: false,
+			interactive: false,
 			paths: [
 				literal('file1.txt'),
 				literal('file2.txt'),
@@ -49,7 +61,12 @@ test('rm with multiple files', () => {
 test('rm with -r flag', () => {
 	const result = compileRm(cmd('rm', [literal('-r'), literal('dir1')]));
 	expect(result).toEqual({
-		args: { paths: [literal('dir1')], recursive: true },
+		args: {
+			force: false,
+			interactive: false,
+			paths: [literal('dir1')],
+			recursive: true,
+		},
 		cmd: 'rm',
 	});
 });
@@ -65,6 +82,8 @@ test('rm with -r and multiple paths', () => {
 	);
 	expect(result).toEqual({
 		args: {
+			force: false,
+			interactive: false,
 			paths: [literal('dir1'), literal('dir2'), literal('dir3')],
 			recursive: true,
 		},
@@ -72,10 +91,28 @@ test('rm with -r and multiple paths', () => {
 	});
 });
 
-test('rm with -f flag (ignored in compile)', () => {
+test('rm with -f flag maps to force mode', () => {
 	const result = compileRm(cmd('rm', [literal('-f'), literal('file.txt')]));
 	expect(result).toEqual({
-		args: { paths: [literal('file.txt')], recursive: false },
+		args: {
+			force: true,
+			interactive: false,
+			paths: [literal('file.txt')],
+			recursive: false,
+		},
+		cmd: 'rm',
+	});
+});
+
+test('rm with -i flag maps to interactive mode', () => {
+	const result = compileRm(cmd('rm', [literal('-i'), literal('file.txt')]));
+	expect(result).toEqual({
+		args: {
+			force: false,
+			interactive: true,
+			paths: [literal('file.txt')],
+			recursive: false,
+		},
 		cmd: 'rm',
 	});
 });
