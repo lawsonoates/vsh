@@ -2,6 +2,19 @@ import type { FS } from '../../fs/fs';
 import type { FileRecord, LineRecord } from '../../record';
 import type { Transducer } from '../types';
 
+export function headLines(n: number): Transducer<LineRecord, LineRecord> {
+	return async function* (input) {
+		let emitted = 0;
+		for await (const line of input) {
+			if (emitted >= n) {
+				break;
+			}
+			emitted++;
+			yield line;
+		}
+	};
+}
+
 export function head(fs: FS): Transducer<FileRecord, LineRecord> {
 	return async function* (input) {
 		for await (const file of input) {

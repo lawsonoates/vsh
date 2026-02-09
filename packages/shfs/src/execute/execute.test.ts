@@ -3,7 +3,7 @@ import { literal, type PipelineIR } from '@shfs/compiler';
 
 import { collect } from '../consumer/consumer';
 import { MemoryFS } from '../fs/memory';
-import type { LineRecord, Record as ShellRecord } from '../record';
+import type { FileRecord, LineRecord, Record as ShellRecord } from '../record';
 import { execute } from './execute';
 
 const textDecoder = new TextDecoder();
@@ -143,4 +143,277 @@ test('creates an empty output file when redirecting sink commands', async () => 
 
 	expect(await fs.exists('created.txt')).toBe(true);
 	expect(textDecoder.decode(await fs.readFile('logs.txt'))).toBe('');
+});
+
+test('executes multi-step stream pipelines end-to-end', async () => {
+	const fs = new MemoryFS();
+	fs.setFile('input.txt', 'alpha\nbeta\ngamma');
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('cat'),
+			args: [literal('input.txt')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: 'input.txt' },
+		steps: [
+			{
+				cmd: 'cat',
+				args: {
+					files: [literal('input.txt')],
+				},
+			},
+			{
+				cmd: 'tail',
+				args: {
+					files: [],
+					n: 1,
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('stream');
+	if (result.kind !== 'stream') {
+		throw new Error('Expected stream result');
+	}
+	const records = await collect<ShellRecord>()(result.value);
+	const lineRecords = records.filter(
+		(record): record is LineRecord => record.kind === 'line'
+	);
+	expect(lineRecords.map((record) => record.text)).toEqual(['gamma']);
+});
+
+test('wires cp force flag through execute', async () => {
+	const fs = new MemoryFS();
+	fs.setFile('source.txt', 'from source');
+	fs.setFile('dest.txt', 'existing');
+
+	const withoutForce: PipelineIR = {
+		firstCommand: {
+			name: literal('cp'),
+			args: [literal('source.txt'), literal('dest.txt')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: 'source.txt' },
+		steps: [
+			{
+				cmd: 'cp',
+				args: {
+					dest: literal('dest.txt'),
+					force: false,
+					interactive: false,
+					recursive: false,
+					srcs: [literal('source.txt')],
+				},
+			},
+		],
+	};
+
+	const firstResult = execute(withoutForce, fs);
+	expect(firstResult.kind).toBe('sink');
+	if (firstResult.kind === 'sink') {
+		await expect(firstResult.value).rejects.toThrow(
+			'cp: destination exists (use -f to overwrite): dest.txt'
+		);
+	}
+
+	const withForce: PipelineIR = {
+		...withoutForce,
+		steps: [
+			{
+				cmd: 'cp',
+				args: {
+					dest: literal('dest.txt'),
+					force: true,
+					interactive: false,
+					recursive: false,
+					srcs: [literal('source.txt')],
+				},
+			},
+		],
+	};
+
+	const secondResult = execute(withForce, fs);
+	expect(secondResult.kind).toBe('sink');
+	if (secondResult.kind === 'sink') {
+		await secondResult.value;
+	}
+
+	expect(textDecoder.decode(await fs.readFile('dest.txt'))).toBe(
+		'from source'
+	);
+});
+
+test('wires mkdir through execute', async () => {
+	const fs = new MemoryFS();
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('mkdir'),
+			args: [literal('/newdir')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/newdir' },
+		steps: [
+			{
+				cmd: 'mkdir',
+				args: {
+					parents: false,
+					paths: [literal('/newdir')],
+					recursive: false,
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await result.value;
+	}
+
+	const stat = await fs.stat('/newdir');
+	expect(stat.isDirectory).toBe(true);
+});
+
+test('wires mv force flag through execute', async () => {
+	const fs = new MemoryFS();
+	fs.setFile('/source.txt', 'new content');
+	fs.setFile('/dest.txt', 'old content');
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('mv'),
+			args: [literal('/source.txt'), literal('/dest.txt')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/source.txt' },
+		steps: [
+			{
+				cmd: 'mv',
+				args: {
+					dest: literal('/dest.txt'),
+					force: true,
+					interactive: false,
+					srcs: [literal('/source.txt')],
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await result.value;
+	}
+
+	expect(textDecoder.decode(await fs.readFile('/dest.txt'))).toBe(
+		'new content'
+	);
+	await expect(fs.readFile('/source.txt')).rejects.toThrow('File not found');
+});
+
+test('wires rm force flag through execute', async () => {
+	const fs = new MemoryFS();
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('rm'),
+			args: [literal('/missing.txt')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/missing.txt' },
+		steps: [
+			{
+				cmd: 'rm',
+				args: {
+					force: true,
+					interactive: false,
+					paths: [literal('/missing.txt')],
+					recursive: false,
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await result.value;
+	}
+});
+
+test('wires ls long format through execute', async () => {
+	const fs = new MemoryFS();
+	fs.setFile('/alpha.txt', 'a');
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('ls'),
+			args: [literal('/*')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/*' },
+		steps: [
+			{
+				cmd: 'ls',
+				args: {
+					longFormat: true,
+					paths: [literal('/*')],
+					showAll: false,
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('stream');
+	if (result.kind !== 'stream') {
+		throw new Error('Expected stream result');
+	}
+	const records = await collect<ShellRecord>()(result.value);
+	const lineRecords = records.filter(
+		(record): record is LineRecord => record.kind === 'line'
+	);
+	expect(lineRecords.length).toBeGreaterThan(0);
+	expect(lineRecords[0]?.text.includes('/alpha.txt')).toBe(true);
+});
+
+test('ls with dot path does not recurse into nested paths', async () => {
+	const fs = new MemoryFS();
+	fs.setFile('/top.txt', 'top');
+	fs.setFile('/nested/deep.txt', 'deep');
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('ls'),
+			args: [literal('.')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '.' },
+		steps: [
+			{
+				cmd: 'ls',
+				args: {
+					longFormat: false,
+					paths: [literal('.')],
+					showAll: false,
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('stream');
+	if (result.kind !== 'stream') {
+		throw new Error('Expected stream result');
+	}
+	const records = await collect<ShellRecord>()(result.value);
+	const filePaths = records
+		.filter((record): record is FileRecord => record.kind === 'file')
+		.map((record) => record.path);
+
+	expect(filePaths).toContain('/top.txt');
+	expect(filePaths).not.toContain('/nested/deep.txt');
 });

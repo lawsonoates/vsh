@@ -10,15 +10,17 @@
 	},
 	"dependencies": {
 		"bun-plugin-tailwind": "^0.1.2",
+		"picomatch": "^4.0.3",
 		"react": "^19",
 		"react-dom": "^19",
 		"shfs": "^0.1.1",
 		"tailwindcss": "^4.1.11"
 	},
 	"devDependencies": {
-		"alchemy": "^0.84.0",
+		"@types/bun": "latest",
+		"@types/picomatch": "^4.0.2",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
-		"@types/bun": "latest"
+		"alchemy": "^0.84.0"
 	}
 }

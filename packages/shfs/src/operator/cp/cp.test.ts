@@ -12,8 +12,30 @@ test('cp copies file from source to destination', async () => {
 	fs.setFile(sourcePath, sourceContent);
 
 	const effect = cp(fs);
-	await effect({ src: sourcePath, dest: destPath, recursive: false });
+	await effect({ srcs: [sourcePath], dest: destPath, recursive: false });
 
 	const destContent = await fs.readFile(destPath);
 	expect(new TextDecoder().decode(destContent)).toBe(sourceContent);
+});
+
+test('cp recursively copies nested directory contents', async () => {
+	const fs = new MemoryFS();
+	await fs.mkdir('/source', true);
+	await fs.mkdir('/source/nested', true);
+	fs.setFile('/source/root.txt', 'root');
+	fs.setFile('/source/nested/leaf.txt', 'leaf');
+
+	const effect = cp(fs);
+	await effect({
+		srcs: ['/source'],
+		dest: '/dest',
+		recursive: true,
+	});
+
+	expect(new TextDecoder().decode(await fs.readFile('/dest/root.txt'))).toBe(
+		'root'
+	);
+	expect(
+		new TextDecoder().decode(await fs.readFile('/dest/nested/leaf.txt'))
+	).toBe('leaf');
 });

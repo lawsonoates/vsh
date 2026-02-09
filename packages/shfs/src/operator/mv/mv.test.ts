@@ -73,6 +73,6 @@ test('mv fails if destination already exists', async () => {
 		await effect({ srcs: ['/source.txt'], dest: '/dest.txt' });
 		expect.unreachable('Should have thrown error');
 	} catch (error) {
-		expect((error as Error).message).toContain('already exists');
+		expect((error as Error).message).toContain('destination exists');
 	}
 });

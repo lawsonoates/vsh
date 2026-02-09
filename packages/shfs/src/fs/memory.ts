@@ -1,9 +1,20 @@
+import picomatch from 'picomatch';
 import type { Stream } from '../stream';
 import type { FS } from './fs';
 
 export type { FS } from './fs';
 
-const TRAILING_SLASH_REGEX = /\/$/;
+const TRAILING_SLASH_REGEX = /\/+$/;
+const MULTIPLE_SLASH_REGEX = /\/+/g;
+
+function normalizePath(path: string): string {
+	if (path === '' || path === '/') {
+		return '/';
+	}
+	return path
+		.replace(TRAILING_SLASH_REGEX, '')
+		.replace(MULTIPLE_SLASH_REGEX, '/');
+}
 
 export class MemoryFS implements FS {
 	private readonly files = new Map<string, Uint8Array>();
@@ -20,16 +31,21 @@ export class MemoryFS implements FS {
 	}
 
 	setFile(path: string, content: string | Uint8Array): void {
+		const normalizedPath = normalizePath(path);
 		const encoded =
 			typeof content === 'string'
 				? new TextEncoder().encode(content)
 				: content;
-		this.files.set(path, encoded);
-		this.fileMetadata.set(path, { mtime: new Date(), isDirectory: false });
+		this.files.set(normalizedPath, encoded);
+		this.fileMetadata.set(normalizedPath, {
+			mtime: new Date(),
+			isDirectory: false,
+		});
 	}
 
 	async readFile(path: string): Promise<Uint8Array> {
-		const content = this.files.get(path);
+		const normalizedPath = normalizePath(path);
+		const content = this.files.get(normalizedPath);
 		if (!content) {
 			throw new Error(`File not found: ${path}`);
 		}
@@ -37,7 +53,8 @@ export class MemoryFS implements FS {
 	}
 
 	async *readLines(path: string): Stream<string> {
-		const content = this.files.get(path);
+		const normalizedPath = normalizePath(path);
+		const content = this.files.get(normalizedPath);
 		if (!content) {
 			throw new Error(`File not found: ${path}`);
 		}
@@ -49,27 +66,74 @@ export class MemoryFS implements FS {
 	}
 
 	async writeFile(path: string, content: Uint8Array): Promise<void> {
-		this.files.set(path, content);
+		const normalizedPath = normalizePath(path);
+		this.files.set(normalizedPath, content);
+		this.fileMetadata.set(normalizedPath, {
+			mtime: new Date(),
+			isDirectory: false,
+		});
 	}
 
 	async deleteFile(path: string): Promise<void> {
-		if (!this.files.has(path)) {
+		const normalizedPath = normalizePath(path);
+		if (!this.files.has(normalizedPath)) {
 			throw new Error(`File not found: ${path}`);
 		}
-		this.files.delete(path);
+		this.files.delete(normalizedPath);
+		this.fileMetadata.delete(normalizedPath);
+	}
+
+	async deleteDirectory(path: string, recursive = false): Promise<void> {
+		const normalizedPath = normalizePath(path);
+		if (normalizedPath === '/') {
+			throw new Error("rm: cannot remove '/'");
+		}
+		if (!this.directories.has(normalizedPath)) {
+			throw new Error(`No such file or directory: ${path}`);
+		}
+
+		const childPrefix = `${normalizedPath}/`;
+		const hasChildDirectories = Array.from(this.directories).some(
+			(directory) =>
+				directory !== normalizedPath &&
+				directory.startsWith(childPrefix)
+		);
+		const hasChildFiles = Array.from(this.files.keys()).some((filePath) =>
+			filePath.startsWith(childPrefix)
+		);
+
+		if (!recursive && (hasChildDirectories || hasChildFiles)) {
+			throw new Error(`Directory not empty: ${path}`);
+		}
+
+		for (const filePath of Array.from(this.files.keys())) {
+			if (filePath.startsWith(childPrefix)) {
+				this.files.delete(filePath);
+				this.fileMetadata.delete(filePath);
+			}
+		}
+
+		const directoriesToDelete = Array.from(this.directories)
+			.filter(
+				(directory) =>
+					directory === normalizedPath ||
+					directory.startsWith(childPrefix)
+			)
+			.sort((a, b) => b.length - a.length);
+		for (const directory of directoriesToDelete) {
+			if (directory === '/') {
+				continue;
+			}
+			this.directories.delete(directory);
+			this.fileMetadata.delete(directory);
+		}
 	}
 
 	async *readdir(glob: string): Stream<string> {
-		const pattern = glob
-			.replace(/\*\*/g, '.*')
-			.replace(/\*/g, '[^/]*')
-			.replace(/\?/g, '[^/]')
-			.replace(/\./g, '\\.');
-
-		const regex = new RegExp(`^${pattern}$`);
+		const isMatch = picomatch(glob, { dot: true });
 
 		const paths = Array.from(this.files.keys())
-			.filter((path) => regex.test(path))
+			.filter((path) => isMatch(path))
 			.sort();
 
 		for (const path of paths) {
@@ -78,13 +142,17 @@ export class MemoryFS implements FS {
 	}
 
 	async mkdir(path: string, recursive = false): Promise<void> {
-		if (this.directories.has(path) || this.files.has(path)) {
+		const normalizedPath = normalizePath(path);
+		if (
+			this.directories.has(normalizedPath) ||
+			this.files.has(normalizedPath)
+		) {
 			throw new Error(`Directory already exists: ${path}`);
 		}
 
 		if (recursive) {
 			// Create all parent directories
-			const parts = path.split('/').filter(Boolean);
+			const parts = normalizedPath.split('/').filter(Boolean);
 			let current = '';
 			for (const part of parts) {
 				current += `/${part}`;
@@ -100,7 +168,9 @@ export class MemoryFS implements FS {
 			}
 		} else {
 			// Check if parent directory exists
-			const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
+			const parentPath =
+				normalizedPath.substring(0, normalizedPath.lastIndexOf('/')) ||
+				'/';
 			if (
 				parentPath !== '/' &&
 				!this.directories.has(parentPath) &&
@@ -108,8 +178,8 @@ export class MemoryFS implements FS {
 			) {
 				throw new Error(`No such file or directory: ${parentPath}`);
 			}
-			this.directories.add(path);
-			this.fileMetadata.set(path, {
+			this.directories.add(normalizedPath);
+			this.fileMetadata.set(normalizedPath, {
 				mtime: new Date(),
 				isDirectory: true,
 			});
@@ -120,7 +190,7 @@ export class MemoryFS implements FS {
 		path: string
 	): Promise<{ isDirectory: boolean; size: number; mtime: Date }> {
 		// Normalize path by removing trailing slash
-		const normalizedPath = path.replace(TRAILING_SLASH_REGEX, '') || '/';
+		const normalizedPath = normalizePath(path);
 
 		if (this.directories.has(normalizedPath)) {
 			return {
@@ -148,6 +218,10 @@ export class MemoryFS implements FS {
 	}
 
 	async exists(path: string): Promise<boolean> {
-		return this.files.has(path) || this.directories.has(path);
+		const normalizedPath = normalizePath(path);
+		return (
+			this.files.has(normalizedPath) ||
+			this.directories.has(normalizedPath)
+		);
 	}
 }

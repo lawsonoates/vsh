@@ -2,8 +2,29 @@ import type { FS } from '../../fs/fs';
 import type { FileRecord } from '../../record';
 import type { Stream } from '../../stream';
 
-export async function* ls(fs: FS, path: string): Stream<FileRecord> {
-	for await (const p of fs.readdir(path)) {
-		yield { kind: 'file', path: p };
+export interface LsOptions {
+	showAll?: boolean;
+}
+
+function basename(path: string): string {
+	const normalized = path.replace(/\/+$/g, '');
+	const slashIndex = normalized.lastIndexOf('/');
+	if (slashIndex === -1) {
+		return normalized;
+	}
+	return normalized.slice(slashIndex + 1);
+}
+
+export async function* ls(
+	fs: FS,
+	path: string,
+	options?: LsOptions
+): Stream<FileRecord> {
+	const showAll = options?.showAll ?? false;
+	for await (const listedPath of fs.readdir(path)) {
+		if (!showAll && basename(listedPath).startsWith('.')) {
+			continue;
+		}
+		yield { kind: 'file', path: listedPath };
 	}
 }

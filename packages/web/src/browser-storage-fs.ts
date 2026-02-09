@@ -1,3 +1,4 @@
+import picomatch from 'picomatch';
 import type { FS } from 'shfs/fs';
 
 interface MetadataEntry {
@@ -18,7 +19,7 @@ interface FSState {
 }
 
 const DEFAULT_STORAGE_KEY = 'shfs-browser-fs-v1';
-const TRAILING_SLASH_REGEX = /\/$/;
+const TRAILING_SLASH_REGEX = /\/+$/;
 const MULTIPLE_SLASH_REGEX = /\/+/g;
 
 function normalizePath(path: string): string {
@@ -124,16 +125,57 @@ export class BrowserStorageFS implements FS {
 		this.persist();
 	}
 
-	async *readdir(glob: string): AsyncIterable<string> {
-		const pattern = glob
-			.replaceAll('**', '.*')
-			.replaceAll('*', '[^/]*')
-			.replaceAll('?', '[^/]')
-			.replaceAll('.', '\\.');
+	async deleteDirectory(path: string, recursive = false): Promise<void> {
+		const normalizedPath = normalizePath(path);
+		if (normalizedPath === '/') {
+			throw new Error("rm: cannot remove '/'");
+		}
+		if (!this.state.directories.has(normalizedPath)) {
+			throw new Error(`No such file or directory: ${path}`);
+		}
 
-		const regex = new RegExp(`^${pattern}$`);
+		const childPrefix = `${normalizedPath}/`;
+		const hasChildDirectories = Array.from(this.state.directories).some(
+			(directory) =>
+				directory !== normalizedPath &&
+				directory.startsWith(childPrefix)
+		);
+		const hasChildFiles = Array.from(this.state.files.keys()).some(
+			(filePath) => filePath.startsWith(childPrefix)
+		);
+		if (!recursive && (hasChildDirectories || hasChildFiles)) {
+			throw new Error(`Directory not empty: ${path}`);
+		}
+
+		for (const filePath of Array.from(this.state.files.keys())) {
+			if (filePath.startsWith(childPrefix)) {
+				this.state.files.delete(filePath);
+				this.state.metadata.delete(filePath);
+			}
+		}
+
+		const directoriesToDelete = Array.from(this.state.directories)
+			.filter(
+				(directory) =>
+					directory === normalizedPath ||
+					directory.startsWith(childPrefix)
+			)
+			.sort((a, b) => b.length - a.length);
+		for (const directory of directoriesToDelete) {
+			if (directory === '/') {
+				continue;
+			}
+			this.state.directories.delete(directory);
+			this.state.metadata.delete(directory);
+		}
+
+		this.persist();
+	}
+
+	async *readdir(glob: string): AsyncIterable<string> {
+		const isMatch = picomatch(glob, { dot: true });
 		const paths = Array.from(this.state.files.keys())
-			.filter((path) => regex.test(path))
+			.filter((path) => isMatch(path))
 			.sort();
 
 		for (const path of paths) {

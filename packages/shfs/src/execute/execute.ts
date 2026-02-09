@@ -5,18 +5,17 @@ import {
 	type RedirectionIR,
 	type StepIR,
 } from '@shfs/compiler';
-import { map, pipe } from 'remeda';
 import type { FS } from '../fs/fs';
 import { cat } from '../operator/cat/cat';
 import { cp } from '../operator/cp/cp';
-import { headWithN } from '../operator/head/head';
+import { headLines, headWithN } from '../operator/head/head';
 import { ls } from '../operator/ls/ls';
 import { mkdir } from '../operator/mkdir/mkdir';
 import { mv } from '../operator/mv/mv';
 import { rm } from '../operator/rm/rm';
 import { tail } from '../operator/tail/tail';
 import { touch } from '../operator/touch/touch';
-import type { Record } from '../record';
+import type { LineRecord, Record } from '../record';
 import type { Stream } from '../stream';
 import { files } from './producers';
 
@@ -25,53 +24,138 @@ export type ExecuteResult =
 	| { kind: 'sink'; value: Promise<void> };
 
 const textEncoder = new TextEncoder();
+const EFFECT_COMMANDS = new Set(['cp', 'mkdir', 'mv', 'rm', 'touch']);
+const LS_GLOB_PATTERN_REGEX = /[*?]/;
+const TRAILING_SLASH_REGEX = /\/+$/;
+
+type EffectStep = Extract<
+	StepIR,
+	{ cmd: 'cp' | 'mkdir' | 'mv' | 'rm' | 'touch' }
+>;
+type StreamStep = Exclude<StepIR, EffectStep>;
+
+function isEffectStep(step: StepIR): step is EffectStep {
+	return EFFECT_COMMANDS.has(step.cmd);
+}
+
+async function* emptyStream<T>(): Stream<T> {
+	// no records
+}
 
 /**
  * Execute compiles a PipelineIR into an executable result.
  * Returns either a stream (for producers/transducers) or a promise (for sinks).
  */
 export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
-	const step = ir.steps[0];
-	if (!step) {
+	if (ir.steps.length === 0) {
 		return {
 			kind: 'stream',
-			value: (async function* () {
-				// Empty stream - no steps to execute
-			})(),
+			value: emptyStream<Record>(),
 		};
 	}
 
-	let result: ExecuteResult;
+	const lastStep = ir.steps.at(-1);
+	if (!lastStep) {
+		return {
+			kind: 'stream',
+			value: emptyStream<Record>(),
+		};
+	}
 
+	if (isEffectStep(lastStep)) {
+		for (const [index, step] of ir.steps.entries()) {
+			if (isEffectStep(step) && index !== ir.steps.length - 1) {
+				throw new Error(
+					`Unsupported pipeline: "${step.cmd}" must be the final command`
+				);
+			}
+		}
+
+		const sink = executePipelineToSink(ir.steps, fs);
+		return applyOutputRedirect(
+			{
+				kind: 'sink',
+				value: sink,
+			},
+			lastStep,
+			fs
+		);
+	}
+
+	const stream = executePipelineToStream(ir.steps, fs);
+	return applyOutputRedirect(
+		{
+			kind: 'stream',
+			value: stream,
+		},
+		lastStep,
+		fs
+	);
+}
+
+function executePipelineToStream(steps: StepIR[], fs: FS): Stream<Record> {
+	return (async function* () {
+		let stream: Stream<Record> | null = null;
+		for (const step of steps) {
+			if (isEffectStep(step)) {
+				throw new Error(
+					`Unsupported pipeline: "${step.cmd}" requires being the final command`
+				);
+			}
+			stream = executeStreamStep(step, fs, stream);
+		}
+
+		if (!stream) {
+			return;
+		}
+		yield* stream;
+	})();
+}
+
+async function executePipelineToSink(steps: StepIR[], fs: FS): Promise<void> {
+	const finalStep = steps.at(-1);
+	if (!(finalStep && isEffectStep(finalStep))) {
+		return;
+	}
+
+	if (steps.length > 1) {
+		const stream = executePipelineToStream(steps.slice(0, -1), fs);
+		for await (const _record of stream) {
+			// drain
+		}
+	}
+
+	await executeEffectStep(finalStep, fs);
+}
+
+function executeStreamStep(
+	step: StreamStep,
+	fs: FS,
+	input: Stream<Record> | null
+): Stream<Record> {
 	switch (step.cmd) {
 		case 'cat': {
+			const options = {
+				numberLines: step.args.numberLines,
+				numberNonBlank: step.args.numberNonBlank,
+				showAll: step.args.showAll,
+				showEnds: step.args.showEnds,
+				showNonprinting: step.args.showNonprinting,
+				showTabs: step.args.showTabs,
+				squeezeBlank: step.args.squeezeBlank,
+			};
 			const inputPath = getRedirectPath(step.redirections, 'input');
 			const filePaths = withInputRedirect(
 				extractPathsFromExpandedWords(step.args.files),
 				inputPath
 			);
-			result = {
-				kind: 'stream',
-				value: pipe(files(...filePaths), cat(fs)),
-			};
-			break;
-		}
-		case 'cp': {
-			const srcPaths = extractPathsFromExpandedWords(step.args.srcs);
-			const destPath = expandedWordToString(step.args.dest);
-			result = {
-				kind: 'sink',
-				value: Promise.all(
-					map(srcPaths, (src) =>
-						cp(fs)({
-							src,
-							dest: destPath,
-							recursive: step.args.recursive,
-						})
-					)
-				).then(),
-			};
-			break;
+			if (filePaths.length > 0) {
+				return cat(fs, options)(files(...filePaths));
+			}
+			if (input) {
+				return cat(fs, options)(input);
+			}
+			return emptyStream<Record>();
 		}
 		case 'head': {
 			const inputPath = getRedirectPath(step.redirections, 'input');
@@ -79,60 +163,34 @@ export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
 				extractPathsFromExpandedWords(step.args.files),
 				inputPath
 			);
-			result = {
-				kind: 'stream',
-				value: pipe(files(...filePaths), headWithN(fs, step.args.n)),
-			};
-			break;
+			if (filePaths.length > 0) {
+				return headWithN(fs, step.args.n)(files(...filePaths));
+			}
+			if (!input) {
+				return emptyStream<Record>();
+			}
+			return headLines(step.args.n)(toLineStream(fs, input));
 		}
 		case 'ls': {
 			const paths = extractPathsFromExpandedWords(step.args.paths);
-			result = {
-				kind: 'stream',
-				value: (async function* () {
-					const results = await Promise.all(
-						map(paths, (path) => ls(fs, path))
-					).then();
-
-					for (const file of results) {
-						yield* file;
+			return (async function* () {
+				for (const inputPath of paths) {
+					const resolvedPath = await resolveLsPath(fs, inputPath);
+					for await (const fileRecord of ls(fs, resolvedPath, {
+						showAll: step.args.showAll,
+					})) {
+						if (step.args.longFormat) {
+							const stat = await fs.stat(fileRecord.path);
+							yield {
+								kind: 'line',
+								text: formatLongListing(fileRecord.path, stat),
+							} as const;
+							continue;
+						}
+						yield fileRecord;
 					}
-				})(),
-			};
-			break;
-		}
-		case 'mkdir': {
-			const paths = extractPathsFromExpandedWords(step.args.paths);
-			result = {
-				kind: 'sink',
-				value: Promise.all(
-					map(paths, (path) =>
-						mkdir(fs)({ path, recursive: step.args.recursive })
-					)
-				).then(),
-			};
-			break;
-		}
-		case 'mv': {
-			const srcPaths = extractPathsFromExpandedWords(step.args.srcs);
-			const destPath = expandedWordToString(step.args.dest);
-			result = {
-				kind: 'sink',
-				value: mv(fs)({ srcs: srcPaths, dest: destPath }),
-			};
-			break;
-		}
-		case 'rm': {
-			const paths = extractPathsFromExpandedWords(step.args.paths);
-			result = {
-				kind: 'sink',
-				value: Promise.all(
-					map(paths, (path) =>
-						rm(fs)({ path, recursive: step.args.recursive })
-					)
-				).then(),
-			};
-			break;
+				}
+			})();
 		}
 		case 'tail': {
 			const inputPath = getRedirectPath(step.redirections, 'input');
@@ -140,36 +198,168 @@ export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
 				extractPathsFromExpandedWords(step.args.files),
 				inputPath
 			);
-			result = {
-				kind: 'stream',
-				value: (async function* () {
-					const results = await Promise.all(
-						map(filePaths, (file) =>
-							pipe(files(file), cat(fs), tail(step.args.n))
-						)
-					);
-					for (const lines of results) {
-						yield* lines;
+			if (filePaths.length > 0) {
+				return (async function* () {
+					for (const filePath of filePaths) {
+						yield* tail(step.args.n)(cat(fs)(files(filePath)));
 					}
-				})(),
-			};
+				})();
+			}
+			if (!input) {
+				return emptyStream<Record>();
+			}
+			return tail(step.args.n)(toLineStream(fs, input));
+		}
+		default: {
+			const _exhaustive: never = step;
+			throw new Error(
+				`Unknown command: ${String((_exhaustive as { cmd: string }).cmd)}`
+			);
+		}
+	}
+}
+
+async function executeEffectStep(step: EffectStep, fs: FS): Promise<void> {
+	switch (step.cmd) {
+		case 'cp': {
+			const srcPaths = extractPathsFromExpandedWords(step.args.srcs);
+			const destPath = expandedWordToString(step.args.dest);
+			await cp(fs)({
+				srcs: srcPaths,
+				dest: destPath,
+				force: step.args.force,
+				interactive: step.args.interactive,
+				recursive: step.args.recursive,
+			});
+			break;
+		}
+		case 'mkdir': {
+			const paths = extractPathsFromExpandedWords(step.args.paths);
+			for (const path of paths) {
+				await mkdir(fs)({ path, recursive: step.args.recursive });
+			}
+			break;
+		}
+		case 'mv': {
+			const srcPaths = extractPathsFromExpandedWords(step.args.srcs);
+			const destPath = expandedWordToString(step.args.dest);
+			await mv(fs)({
+				srcs: srcPaths,
+				dest: destPath,
+				force: step.args.force,
+				interactive: step.args.interactive,
+			});
+			break;
+		}
+		case 'rm': {
+			const paths = extractPathsFromExpandedWords(step.args.paths);
+			for (const path of paths) {
+				await rm(fs)({
+					path,
+					force: step.args.force,
+					interactive: step.args.interactive,
+					recursive: step.args.recursive,
+				});
+			}
 			break;
 		}
 		case 'touch': {
 			const filePaths = extractPathsFromExpandedWords(step.args.files);
-			result = {
-				kind: 'sink',
-				value: touch(fs)({ files: filePaths }),
-			};
+			await touch(fs)({
+				files: filePaths,
+				accessTimeOnly: step.args.accessTimeOnly,
+				modificationTimeOnly: step.args.modificationTimeOnly,
+			});
 			break;
 		}
-		default:
+		default: {
+			const _exhaustive: never = step;
 			throw new Error(
-				`Unknown command: ${String((step as { cmd: string }).cmd)}`
+				`Unknown command: ${String((_exhaustive as { cmd: string }).cmd)}`
 			);
+		}
+	}
+}
+
+async function* toLineStream(
+	fs: FS,
+	input: Stream<Record>
+): Stream<LineRecord> {
+	for await (const record of input) {
+		if (record.kind === 'line') {
+			yield record;
+			continue;
+		}
+
+		if (record.kind === 'file') {
+			let lineNum = 1;
+			for await (const text of fs.readLines(record.path)) {
+				yield {
+					kind: 'line',
+					text,
+					file: record.path,
+					lineNum: lineNum++,
+				};
+			}
+			continue;
+		}
+
+		yield {
+			kind: 'line',
+			text: JSON.stringify(record.value),
+		};
+	}
+}
+
+function formatLongListing(
+	path: string,
+	stat: Awaited<ReturnType<FS['stat']>>
+): string {
+	const mode = stat.isDirectory ? 'd' : '-';
+	const size = String(stat.size).padStart(8, ' ');
+	return `${mode} ${size} ${stat.mtime.toISOString()} ${path}`;
+}
+
+function normalizeLsPath(path: string): string {
+	if (path === '.' || path === './') {
+		return '/';
+	}
+	if (path.startsWith('./')) {
+		return `/${path.slice(2)}`;
+	}
+	if (path.startsWith('/')) {
+		return path;
+	}
+	return `/${path}`;
+}
+
+function trimTrailingSlash(path: string): string {
+	if (path === '/') {
+		return path;
+	}
+	return path.replace(TRAILING_SLASH_REGEX, '');
+}
+
+async function resolveLsPath(fs: FS, path: string): Promise<string> {
+	const normalizedPath = normalizeLsPath(path);
+	if (LS_GLOB_PATTERN_REGEX.test(normalizedPath)) {
+		return normalizedPath;
 	}
 
-	return applyOutputRedirect(result, step, fs);
+	try {
+		const stat = await fs.stat(normalizedPath);
+		if (!stat.isDirectory) {
+			return normalizedPath;
+		}
+	} catch {
+		return normalizedPath;
+	}
+
+	const directoryPath = trimTrailingSlash(normalizedPath);
+	if (directoryPath === '/') {
+		return '/*';
+	}
+	return `${directoryPath}/*`;
 }
 
 function getRedirectPath(

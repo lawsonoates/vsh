@@ -19,3 +19,15 @@ test('rm deletes a file', async () => {
 		expect((error as Error).message).toContain('File not found');
 	}
 });
+
+test('rm recursively deletes nested files', async () => {
+	const fs = new MemoryFS();
+	await fs.mkdir('/dir/subdir', true);
+	fs.setFile('/dir/root.txt', 'root');
+	fs.setFile('/dir/subdir/leaf.txt', 'leaf');
+
+	await rm(fs)({ path: '/dir', recursive: true });
+
+	expect(await fs.exists('/dir/root.txt')).toBe(false);
+	expect(await fs.exists('/dir/subdir/leaf.txt')).toBe(false);
+});

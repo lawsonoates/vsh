@@ -5,6 +5,7 @@ export interface FS {
 	readLines(path: string): Stream<string>;
 	writeFile(path: string, content: Uint8Array): Promise<void>;
 	deleteFile(path: string): Promise<void>;
+	deleteDirectory(path: string, recursive?: boolean): Promise<void>;
 	readdir(path: string): Stream<string>;
 	mkdir(path: string, recursive?: boolean): Promise<void>;
 	stat(
