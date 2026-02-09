@@ -8,9 +8,9 @@ if (!version) {
 	process.exit(1);
 }
 
-// Guard: must be on main
+// Guard: must be on master
 const branch = (await $`git branch --show-current`.text()).trim();
-if (branch !== 'main') {
+if (branch !== 'master') {
 	console.error(`Refusing to release from "${branch}"`);
 	process.exit(1);
 }
