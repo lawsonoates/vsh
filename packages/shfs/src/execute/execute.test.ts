@@ -418,6 +418,45 @@ test('ls with dot path does not recurse into nested paths', async () => {
 	expect(filePaths).not.toContain('/nested/deep.txt');
 });
 
+test('ls with dot path uses execution context cwd', async () => {
+	const fs = new MemoryFS();
+	await fs.mkdir('/workspace', true);
+	fs.setFile('/workspace/file.txt', 'content');
+	fs.setFile('/other.txt', 'other');
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('ls'),
+			args: [literal('.')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '.' },
+		steps: [
+			{
+				cmd: 'ls',
+				args: {
+					longFormat: false,
+					paths: [literal('.')],
+					showAll: false,
+				},
+			},
+		],
+	};
+
+	const result = execute(ir, fs, { cwd: '/workspace' });
+	expect(result.kind).toBe('stream');
+	if (result.kind !== 'stream') {
+		throw new Error('Expected stream result');
+	}
+	const records = await collect<ShellRecord>()(result.value);
+	const filePaths = records
+		.filter((record): record is FileRecord => record.kind === 'file')
+		.map((record) => record.path);
+
+	expect(filePaths).toContain('/workspace/file.txt');
+	expect(filePaths).not.toContain('/other.txt');
+});
+
 test('wires pwd through execute', async () => {
 	const fs = new MemoryFS();
 

@@ -197,7 +197,11 @@ function executeStreamStep(
 			const paths = extractPathsFromExpandedWords(step.args.paths);
 			return (async function* () {
 				for (const inputPath of paths) {
-					const resolvedPath = await resolveLsPath(fs, inputPath);
+					const resolvedPath = await resolveLsPath(
+						fs,
+						inputPath,
+						context.cwd
+					);
 					for await (const fileRecord of ls(fs, resolvedPath, {
 						showAll: step.args.showAll,
 					})) {
@@ -413,17 +417,17 @@ function formatLongListing(
 	return `${mode} ${size} ${stat.mtime.toISOString()} ${path}`;
 }
 
-function normalizeLsPath(path: string): string {
+function normalizeLsPath(path: string, cwd: string): string {
 	if (path === '.' || path === './') {
-		return '/';
+		return cwd;
 	}
 	if (path.startsWith('./')) {
-		return `/${path.slice(2)}`;
+		return `${cwd}/${path.slice(2)}`;
 	}
 	if (path.startsWith('/')) {
 		return path;
 	}
-	return `/${path}`;
+	return `${cwd}/${path}`;
 }
 
 function trimTrailingSlash(path: string): string {
@@ -433,8 +437,12 @@ function trimTrailingSlash(path: string): string {
 	return path.replace(TRAILING_SLASH_REGEX, '');
 }
 
-async function resolveLsPath(fs: FS, path: string): Promise<string> {
-	const normalizedPath = normalizeLsPath(path);
+async function resolveLsPath(
+	fs: FS,
+	path: string,
+	cwd: string
+): Promise<string> {
+	const normalizedPath = normalizeLsPath(path, cwd);
 	if (LS_GLOB_PATTERN_REGEX.test(normalizedPath)) {
 		return normalizedPath;
 	}
