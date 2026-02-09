@@ -20,6 +20,10 @@
 		"./fs": {
 			"import": "./dist/fs.mjs",
 			"types": "./dist/fs.d.mts"
+		},
+		"./util/path": {
+			"import": "./dist/util/path.mjs",
+			"types": "./dist/util/path.d.mts"
 		}
 	},
 	"files": [

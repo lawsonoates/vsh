@@ -1,5 +1,6 @@
 import picomatch from 'picomatch';
 import type { FS } from 'shfs/fs';
+import { normalizePath } from 'shfs/util/path';
 
 interface MetadataEntry {
 	mtime: Date;
@@ -19,20 +20,6 @@ interface FSState {
 }
 
 const DEFAULT_STORAGE_KEY = 'shfs-browser-fs-v1';
-const TRAILING_SLASH_REGEX = /\/+$/;
-const MULTIPLE_SLASH_REGEX = /\/+/g;
-
-function normalizePath(path: string): string {
-	if (path === '') {
-		return '/';
-	}
-	if (path === '/') {
-		return path;
-	}
-	return path
-		.replace(TRAILING_SLASH_REGEX, '')
-		.replace(MULTIPLE_SLASH_REGEX, '/');
-}
 
 function emptyState(): FSState {
 	const state: FSState = {
@@ -174,9 +161,11 @@ export class BrowserStorageFS implements FS {
 
 	async *readdir(glob: string): AsyncIterable<string> {
 		const isMatch = picomatch(glob, { dot: true });
-		const paths = Array.from(this.state.files.keys())
-			.filter((path) => isMatch(path))
-			.sort();
+		const allPaths = [
+			...Array.from(this.state.directories.keys()),
+			...Array.from(this.state.files.keys()),
+		];
+		const paths = allPaths.filter((path) => isMatch(path)).sort();
 
 		for (const path of paths) {
 			yield path;

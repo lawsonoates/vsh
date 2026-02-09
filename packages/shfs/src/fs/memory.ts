@@ -1,20 +1,9 @@
 import picomatch from 'picomatch';
 import type { Stream } from '../stream';
+import { normalizePath } from '../util/path';
 import type { FS } from './fs';
 
 export type { FS } from './fs';
-
-const TRAILING_SLASH_REGEX = /\/+$/;
-const MULTIPLE_SLASH_REGEX = /\/+/g;
-
-function normalizePath(path: string): string {
-	if (path === '' || path === '/') {
-		return '/';
-	}
-	return path
-		.replace(TRAILING_SLASH_REGEX, '')
-		.replace(MULTIPLE_SLASH_REGEX, '/');
-}
 
 export class MemoryFS implements FS {
 	private readonly files = new Map<string, Uint8Array>();
@@ -132,9 +121,11 @@ export class MemoryFS implements FS {
 	async *readdir(glob: string): Stream<string> {
 		const isMatch = picomatch(glob, { dot: true });
 
-		const paths = Array.from(this.files.keys())
-			.filter((path) => isMatch(path))
-			.sort();
+		const allPaths = [
+			...Array.from(this.directories.keys()),
+			...Array.from(this.files.keys()),
+		];
+		const paths = allPaths.filter((path) => isMatch(path)).sort();
 
 		for (const path of paths) {
 			yield path;
