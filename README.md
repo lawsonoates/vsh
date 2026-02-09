@@ -38,11 +38,13 @@ console.log(content);
 
 ## Supported Commands
 - cat
+- cd
 - cp
 - head
 - ls
 - mkdir
 - mv
+- pwd
 - rm
 - tail
 - touch

@@ -6,7 +6,7 @@ Strict fish-inspired subset for filesystem commands. Not POSIX, not full fish. D
 
 ## Commands
 
-- `cat`, `cp`, `head`, `ls`, `mkdir`, `mv`, `rm`, `tail`, `touch` (built-ins only, no external binaries, no `$PATH`)
+- `cat`, `cd`, `cp`, `head`, `ls`, `mkdir`, `mv`, `pwd`, `rm`, `tail`, `touch` (built-ins only, no external binaries, no `$PATH`)
 
 ## Supported
 

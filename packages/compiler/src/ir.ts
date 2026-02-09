@@ -42,6 +42,17 @@ export type SourceIR =
 	  };
 
 /**
+ * Cd step.
+ */
+export interface CdStep {
+	cmd: 'cd';
+	redirections?: RedirectionIR[];
+	args: {
+		path: ExpandedWord;
+	};
+}
+
+/**
  * Cat step with ExpandedWord support.
  */
 export interface CatStep {
@@ -152,15 +163,26 @@ export interface TouchStep {
 }
 
 /**
+ * Pwd step.
+ */
+export interface PwdStep {
+	cmd: 'pwd';
+	redirections?: RedirectionIR[];
+	args: Record<never, never>;
+}
+
+/**
  * Union of all step types.
  */
 export type StepIR =
+	| CdStep
 	| CatStep
 	| CpStep
 	| HeadStep
 	| LsStep
 	| MkdirStep
 	| MvStep
+	| PwdStep
 	| RmStep
 	| TailStep
 	| TouchStep;

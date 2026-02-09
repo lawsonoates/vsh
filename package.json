@@ -13,6 +13,7 @@
 		"ultracite": "7.0.11"
 	},
 	"scripts": {
+		"build": "bun run --cwd packages/compiler build && bun run --cwd packages/shfs build",
 		"check": "ultracite check",
 		"fix": "ultracite fix",
 		"typecheck": "bun x tsc --noEmit -p packages/compiler/tsconfig.json && bun x tsc --noEmit -p packages/shfs/tsconfig.json && bun x tsc --noEmit -p examples/agent/tsconfig.json && bun x tsc --noEmit -p examples/turso-agent-fs/tsconfig.json"

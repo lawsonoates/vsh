@@ -12,6 +12,7 @@ import { headLines, headWithN } from '../operator/head/head';
 import { ls } from '../operator/ls/ls';
 import { mkdir } from '../operator/mkdir/mkdir';
 import { mv } from '../operator/mv/mv';
+import { pwd } from '../operator/pwd/pwd';
 import { rm } from '../operator/rm/rm';
 import { tail } from '../operator/tail/tail';
 import { touch } from '../operator/touch/touch';
@@ -23,14 +24,20 @@ export type ExecuteResult =
 	| { kind: 'stream'; value: Stream<Record> }
 	| { kind: 'sink'; value: Promise<void> };
 
+export interface ExecuteContext {
+	cwd: string;
+}
+
 const textEncoder = new TextEncoder();
-const EFFECT_COMMANDS = new Set(['cp', 'mkdir', 'mv', 'rm', 'touch']);
+const EFFECT_COMMANDS = new Set(['cd', 'cp', 'mkdir', 'mv', 'rm', 'touch']);
 const LS_GLOB_PATTERN_REGEX = /[*?]/;
+const MULTIPLE_SLASH_REGEX = /\/+/g;
 const TRAILING_SLASH_REGEX = /\/+$/;
+const ROOT_DIRECTORY = '/';
 
 type EffectStep = Extract<
 	StepIR,
-	{ cmd: 'cp' | 'mkdir' | 'mv' | 'rm' | 'touch' }
+	{ cmd: 'cd' | 'cp' | 'mkdir' | 'mv' | 'rm' | 'touch' }
 >;
 type StreamStep = Exclude<StepIR, EffectStep>;
 
@@ -46,7 +53,13 @@ async function* emptyStream<T>(): Stream<T> {
  * Execute compiles a PipelineIR into an executable result.
  * Returns either a stream (for producers/transducers) or a promise (for sinks).
  */
-export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
+export function execute(
+	ir: PipelineIR,
+	fs: FS,
+	context: ExecuteContext = { cwd: ROOT_DIRECTORY }
+): ExecuteResult {
+	const normalizedContext = normalizeContext(context);
+
 	if (ir.steps.length === 0) {
 		return {
 			kind: 'stream',
@@ -71,7 +84,7 @@ export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
 			}
 		}
 
-		const sink = executePipelineToSink(ir.steps, fs);
+		const sink = executePipelineToSink(ir.steps, fs, normalizedContext);
 		return applyOutputRedirect(
 			{
 				kind: 'sink',
@@ -82,7 +95,7 @@ export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
 		);
 	}
 
-	const stream = executePipelineToStream(ir.steps, fs);
+	const stream = executePipelineToStream(ir.steps, fs, normalizedContext);
 	return applyOutputRedirect(
 		{
 			kind: 'stream',
@@ -93,7 +106,11 @@ export function execute(ir: PipelineIR, fs: FS): ExecuteResult {
 	);
 }
 
-function executePipelineToStream(steps: StepIR[], fs: FS): Stream<Record> {
+function executePipelineToStream(
+	steps: StepIR[],
+	fs: FS,
+	context: ExecuteContext
+): Stream<Record> {
 	return (async function* () {
 		let stream: Stream<Record> | null = null;
 		for (const step of steps) {
@@ -102,7 +119,7 @@ function executePipelineToStream(steps: StepIR[], fs: FS): Stream<Record> {
 					`Unsupported pipeline: "${step.cmd}" requires being the final command`
 				);
 			}
-			stream = executeStreamStep(step, fs, stream);
+			stream = executeStreamStep(step, fs, stream, context);
 		}
 
 		if (!stream) {
@@ -112,26 +129,31 @@ function executePipelineToStream(steps: StepIR[], fs: FS): Stream<Record> {
 	})();
 }
 
-async function executePipelineToSink(steps: StepIR[], fs: FS): Promise<void> {
+async function executePipelineToSink(
+	steps: StepIR[],
+	fs: FS,
+	context: ExecuteContext
+): Promise<void> {
 	const finalStep = steps.at(-1);
 	if (!(finalStep && isEffectStep(finalStep))) {
 		return;
 	}
 
 	if (steps.length > 1) {
-		const stream = executePipelineToStream(steps.slice(0, -1), fs);
+		const stream = executePipelineToStream(steps.slice(0, -1), fs, context);
 		for await (const _record of stream) {
 			// drain
 		}
 	}
 
-	await executeEffectStep(finalStep, fs);
+	await executeEffectStep(finalStep, fs, context);
 }
 
 function executeStreamStep(
 	step: StreamStep,
 	fs: FS,
-	input: Stream<Record> | null
+	input: Stream<Record> | null,
+	context: ExecuteContext
 ): Stream<Record> {
 	switch (step.cmd) {
 		case 'cat': {
@@ -210,6 +232,9 @@ function executeStreamStep(
 			}
 			return tail(step.args.n)(toLineStream(fs, input));
 		}
+		case 'pwd': {
+			return pwd(context.cwd);
+		}
 		default: {
 			const _exhaustive: never = step;
 			throw new Error(
@@ -219,8 +244,76 @@ function executeStreamStep(
 	}
 }
 
-async function executeEffectStep(step: EffectStep, fs: FS): Promise<void> {
+function normalizeAbsolutePath(path: string): string {
+	const withLeadingSlash = path.startsWith(ROOT_DIRECTORY)
+		? path
+		: `${ROOT_DIRECTORY}${path}`;
+	const singleSlashes = withLeadingSlash.replace(MULTIPLE_SLASH_REGEX, '/');
+	const segments = singleSlashes.split(ROOT_DIRECTORY);
+	const normalizedSegments: string[] = [];
+	for (const segment of segments) {
+		if (segment === '' || segment === '.') {
+			continue;
+		}
+		if (segment === '..') {
+			normalizedSegments.pop();
+			continue;
+		}
+		normalizedSegments.push(segment);
+	}
+	const normalizedPath = `${ROOT_DIRECTORY}${normalizedSegments.join(ROOT_DIRECTORY)}`;
+	return normalizedPath === '' ? ROOT_DIRECTORY : normalizedPath;
+}
+
+function normalizeCwd(cwd: string): string {
+	if (cwd === '') {
+		return ROOT_DIRECTORY;
+	}
+	const normalized = normalizeAbsolutePath(cwd);
+	const trimmed = normalized.replace(TRAILING_SLASH_REGEX, '');
+	return trimmed === '' ? ROOT_DIRECTORY : trimmed;
+}
+
+function normalizeContext(context: ExecuteContext): ExecuteContext {
+	context.cwd = normalizeCwd(context.cwd);
+	return context;
+}
+
+function resolvePathFromCwd(cwd: string, path: string): string {
+	if (path === '') {
+		return cwd;
+	}
+	if (path.startsWith(ROOT_DIRECTORY)) {
+		return normalizeAbsolutePath(path);
+	}
+	return normalizeAbsolutePath(`${cwd}/${path}`);
+}
+
+async function executeEffectStep(
+	step: EffectStep,
+	fs: FS,
+	context: ExecuteContext
+): Promise<void> {
 	switch (step.cmd) {
+		case 'cd': {
+			const requestedPath = expandedWordToString(step.args.path);
+			const resolvedPath = resolvePathFromCwd(context.cwd, requestedPath);
+			let stat: Awaited<ReturnType<FS['stat']>>;
+			try {
+				stat = await fs.stat(resolvedPath);
+			} catch {
+				throw new Error(
+					`cd: no such file or directory: ${requestedPath}`
+				);
+			}
+
+			if (!stat.isDirectory) {
+				throw new Error(`cd: not a directory: ${requestedPath}`);
+			}
+
+			context.cwd = resolvedPath;
+			break;
+		}
 		case 'cp': {
 			const srcPaths = extractPathsFromExpandedWords(step.args.srcs);
 			const destPath = expandedWordToString(step.args.dest);

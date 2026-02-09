@@ -19,3 +19,19 @@ test('compile preserves input redirection on steps', () => {
 		redirections: [{ kind: 'input', target: literal('input.txt') }],
 	});
 });
+
+test('compile supports pwd command', () => {
+	const ir = compile(parse('pwd'));
+	expect(ir.steps[0]).toMatchObject({
+		args: {},
+		cmd: 'pwd',
+	});
+});
+
+test('compile supports cd command', () => {
+	const ir = compile(parse('cd'));
+	expect(ir.steps[0]).toMatchObject({
+		args: { path: literal('/') },
+		cmd: 'cd',
+	});
+});

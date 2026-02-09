@@ -417,3 +417,182 @@ test('ls with dot path does not recurse into nested paths', async () => {
 	expect(filePaths).toContain('/top.txt');
 	expect(filePaths).not.toContain('/nested/deep.txt');
 });
+
+test('wires pwd through execute', async () => {
+	const fs = new MemoryFS();
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('pwd'),
+			args: [],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '**/*' },
+		steps: [
+			{
+				cmd: 'pwd',
+				args: {},
+			},
+		],
+	};
+
+	const result = execute(ir, fs);
+	expect(result.kind).toBe('stream');
+	if (result.kind !== 'stream') {
+		throw new Error('Expected stream result');
+	}
+
+	const records = await collect<ShellRecord>()(result.value);
+	const lines = records
+		.filter((record): record is LineRecord => record.kind === 'line')
+		.map((record) => record.text);
+
+	expect(lines).toEqual(['/']);
+});
+
+test('pwd uses execution context cwd', async () => {
+	const fs = new MemoryFS();
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('pwd'),
+			args: [],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '**/*' },
+		steps: [
+			{
+				cmd: 'pwd',
+				args: {},
+			},
+		],
+	};
+
+	const result = execute(ir, fs, { cwd: '/workspace/project' });
+	expect(result.kind).toBe('stream');
+	if (result.kind !== 'stream') {
+		throw new Error('Expected stream result');
+	}
+
+	const records = await collect<ShellRecord>()(result.value);
+	const lines = records
+		.filter((record): record is LineRecord => record.kind === 'line')
+		.map((record) => record.text);
+
+	expect(lines).toEqual(['/workspace/project']);
+});
+
+test('cd updates execution context cwd for absolute paths', async () => {
+	const fs = new MemoryFS();
+	await fs.mkdir('/workspace');
+	const context = { cwd: '/' };
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('cd'),
+			args: [literal('/workspace')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/workspace' },
+		steps: [
+			{
+				cmd: 'cd',
+				args: { path: literal('/workspace') },
+			},
+		],
+	};
+
+	const result = execute(ir, fs, context);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await result.value;
+	}
+
+	expect(context.cwd).toBe('/workspace');
+});
+
+test('cd resolves relative and parent paths against cwd', async () => {
+	const fs = new MemoryFS();
+	await fs.mkdir('/workspace/project', true);
+	const context = { cwd: '/workspace' };
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('cd'),
+			args: [literal('project/..')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: 'project/..' },
+		steps: [
+			{
+				cmd: 'cd',
+				args: { path: literal('project/..') },
+			},
+		],
+	};
+
+	const result = execute(ir, fs, context);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await result.value;
+	}
+
+	expect(context.cwd).toBe('/workspace');
+});
+
+test('cd throws when target does not exist', async () => {
+	const fs = new MemoryFS();
+	const context = { cwd: '/' };
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('cd'),
+			args: [literal('/missing')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/missing' },
+		steps: [
+			{
+				cmd: 'cd',
+				args: { path: literal('/missing') },
+			},
+		],
+	};
+
+	const result = execute(ir, fs, context);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await expect(result.value).rejects.toThrow(
+			'cd: no such file or directory: /missing'
+		);
+	}
+});
+
+test('cd throws when target is a file', async () => {
+	const fs = new MemoryFS();
+	fs.setFile('/file.txt', 'hello');
+	const context = { cwd: '/' };
+
+	const ir: PipelineIR = {
+		firstCommand: {
+			name: literal('cd'),
+			args: [literal('/file.txt')],
+			redirections: [],
+		},
+		source: { kind: 'fs', glob: '/file.txt' },
+		steps: [
+			{
+				cmd: 'cd',
+				args: { path: literal('/file.txt') },
+			},
+		],
+	};
+
+	const result = execute(ir, fs, context);
+	expect(result.kind).toBe('sink');
+	if (result.kind === 'sink') {
+		await expect(result.value).rejects.toThrow(
+			'cd: not a directory: /file.txt'
+		);
+	}
+});

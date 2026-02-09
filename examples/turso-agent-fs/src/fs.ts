@@ -39,6 +39,14 @@ export class TursoAgentFS implements FS {
 		await this.agent.fs.deleteFile(path);
 	}
 
+	async deleteDirectory(path: string, recursive = false): Promise<void> {
+		if (recursive) {
+			await this.agent.fs.rm(path, { recursive: true });
+			return;
+		}
+		await this.agent.fs.rmdir(path);
+	}
+
 	async *readdir(path: string): AsyncIterable<string> {
 		const files = await this.agent.fs.readdir(path);
 		for (const file of files) {
@@ -76,14 +84,19 @@ export class TursoAgentFS implements FS {
 	}
 
 	async exists(path: string): Promise<boolean> {
-		const stats = await this.agent.fs.stat(path);
-		if (stats.isDirectory()) {
-			return true;
+		try {
+			const stats = await this.agent.fs.stat(path);
+			if (stats.isDirectory()) {
+				return true;
+			}
+			if (stats.isFile()) {
+				return true;
+			}
+			return false;
+		} catch {
+			// Treat any stat failure as "does not exist" for this adapter.
+			// This mirrors MemoryFS.exists behavior used by shfs.
+			return false;
 		}
-		if (stats.isFile()) {
-			return true;
-		}
-
-		return false;
 	}
 }
