@@ -55,7 +55,6 @@
       "name": "shfs",
       "version": "0.1.1",
       "dependencies": {
-        "@shfs/compiler": "workspace:*",
         "picomatch": "^4.0.3",
         "remeda": "^2.33.1",
       },

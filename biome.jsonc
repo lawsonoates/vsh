@@ -14,14 +14,15 @@
 				"noNamespace": "off"
 			},
 			"performance": {
-				"noBarrelFile": "warn"
+				"noBarrelFile": "off"
 			}
 		}
 	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "single"
-		}
+		},
+		"globals": ["Bun"]
 	},
 	"json": {
 		"formatter": {

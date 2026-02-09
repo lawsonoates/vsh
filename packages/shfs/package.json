@@ -4,7 +4,7 @@
 		"picomatch": "^4.0.3",
 		"remeda": "^2.33.1"
 	},
-	"description": "A library of simulated bash commands",
+	"description": "A library of simulated fish commands",
 	"devDependencies": {
 		"@tsconfig/bun": "catalog:",
 		"@types/bun": "catalog:",
